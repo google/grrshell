@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "grrshell"
+version = "0.1.0"
+description = ""
+authors = ["ramoj@google.com"]
+readme = "README.md"
+
+
+[tool.poetry.scripts]
+grrshell = 'grrshell.cli.main:Main'
+
+
+[tool.poetry.dependencies]
+python = "^3.10"
+absl-py = "^1.4.0"
+humanize = "^4.7.0"
+grr-api-client = "^3.4.6.post7"
+prompt-toolkit = "^3.0.39"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

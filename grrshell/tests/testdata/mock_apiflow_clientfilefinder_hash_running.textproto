@@ -1,0 +1,12 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERHASHRUNNINGFLOWID"
+name: "ClientFileFinder"
+args {
+  type_url: "type.googleapis.com/google3.ops.security.grr.FileFinderArgs"
+  value: "\n-C:/Users/ramo/Downloads/Firefox Installer.exe\020\0052\002\010\001"
+}
+state: RUNNING
+flow_id: "CLIENTFILEFINDERHASHRUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 11000000  # 5 seconds past epoch

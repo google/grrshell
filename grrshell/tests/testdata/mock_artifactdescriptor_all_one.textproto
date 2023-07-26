@@ -1,0 +1,8 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/artifact.proto
+# proto-message: ArtifactDescriptor
+artifact: {
+  name: "AllOne"
+  supported_os: "Windows"
+  supported_os: "Linux"
+  supported_os: "Darwin"
+}

@@ -1,0 +1,12 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/ARTIFACTCOLLECTORFLOWTERMINATEDFLOWID"
+name: "ArtifactCollectorFlow"
+args {
+  type_url: "type.googleapis.com/google3.ops.security.grr.ArtifactCollectorFlowArgs"
+  value: "\n\rartifact_name2\000@\000x\000"
+}
+state: TERMINATED
+flow_id: "ARTIFACTCOLLECTORFLOWTERMINATEDFLOWID"
+client_id: "C.0000000000000001"
+started_at: 9000000  # 9 seconds past epoch

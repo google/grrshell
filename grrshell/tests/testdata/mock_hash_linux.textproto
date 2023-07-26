@@ -1,0 +1,34 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlowResult
+payload: {
+  [type.googleapis.com/grr.FileFinderResult] {
+    stat_entry {
+      st_mode: 33152  # -rw-------
+      st_ino: 2
+      st_dev: 3
+      st_nlink: 4
+      st_uid: 5
+      st_gid: 6
+      st_size: 1024  # 1.0 KiB
+      st_atime: 8
+      st_mtime: 9
+      st_ctime: 10
+      st_blocks: 11
+      st_blksize: 12
+      st_rdev: 13
+      pathspec {
+        pathtype: OS
+        path: "/remote/file"
+        path_options: CASE_LITERAL
+      }
+      st_flags_osx: 14
+      st_flags_linux: 15
+    }
+    hash_entry {
+      sha256: "sha256"
+      sha1: "sha1"
+      md5: "md5"
+      num_bytes: 7
+    }
+  }
+}

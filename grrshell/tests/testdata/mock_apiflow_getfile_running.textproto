@@ -1,0 +1,12 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/GETFILERUNNINGFLOWID"
+name: "GetFile"
+args {
+  type_url: "type.googleapis.com/google3.ops.security.grr.GetFileArgs"
+  value: "\nF\010\005\0221C:/Users/username/Downloads/Firefox Installer.exeZ\017Zone.Identifier"
+}
+state: RUNNING
+flow_id: "GETFILERUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 7000000  # 7 seconds past epoch

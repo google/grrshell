@@ -3,7 +3,7 @@
 urn: "aff4:/C.0000000000000001"
 os_info {
   system: "Windows"
-  fqdn: "host.corp.google.com"
+  fqdn: "host.domain.com"
   install_date: 1644801578000000
 }
 first_seen_at: 1658876722840519

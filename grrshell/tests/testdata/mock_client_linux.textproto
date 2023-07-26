@@ -7,7 +7,7 @@ os_info {
   version: "rodete"
   machine: "x86_64"
   kernel: "6.1.20-2rodete1-amd64"
-  fqdn: "host.corp.google.com"
+  fqdn: "host.domain.com"
   install_date: 1644801578000000
 }
 first_seen_at: 1658876722840519

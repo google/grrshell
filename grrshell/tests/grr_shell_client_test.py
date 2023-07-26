@@ -51,7 +51,7 @@ app._run_init(sys.argv, app.parse_flags_with_usage)
 _TEST_GRR_URL = 'grr-url'
 _TEST_GRR_USER = 'user'
 _TEST_GRR_PASS = 'pass'
-_TEST_CLIENT_FQDN = 'host.corp.google.com'
+_TEST_CLIENT_FQDN = 'host.domain.com'
 _TEST_CLIENT_GRR_ID = 'C.0000000000000001'
 
 _MOCK_DARWIN_CLIENT_PROTO_FILE = 'grrshell/tests/testdata/mock_client_darwin.textproto'

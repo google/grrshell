@@ -62,7 +62,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     mock_get_os.return_value = 'Linux'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
-    shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.corp.google.com')
+    shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.domain.com')
     self.shell = grr_shell_repl.GRRShellREPL(shell_client)
 
   def test_Init(self):
@@ -440,7 +440,7 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
     mock_get_os.return_value = 'Windows'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
-    shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.corp.google.com')
+    shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.domain.com')
     self.shell = grr_shell_repl.GRRShellREPL(shell_client)
 
   @parameterized.named_parameters(

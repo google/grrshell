@@ -1,0 +1,28 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlowResult
+payload: {
+  [type.googleapis.com/grr.StatEntry] {
+    st_mode: 33152  # -rw-------
+    st_nlink: 1
+    st_uid: 2
+    st_gid: 3
+    st_size: 398840  # 389.5 KiB
+    st_atime: 8
+    st_mtime: 9
+    st_ctime: 10
+    pathspec {
+      pathtype: OS
+      path: "/volume"
+      mount_point: "C:"
+      nested_path {
+        pathtype: NTFS
+        path: "/Users/username/Downloads/Firefox Installer.exe"
+        path_options: CASE_LITERAL
+        inode: 11
+        stream_name: "Zone.Identifier"
+      }
+      path_options: CASE_LITERAL
+    }
+    st_btime: 12
+  }
+}

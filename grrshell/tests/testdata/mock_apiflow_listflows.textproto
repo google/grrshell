@@ -1,0 +1,65 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiListFlowsResult
+items: [
+  {
+    urn: "aff4:/C.0000000000000001/A1B2C3D4E5F6A1B2"
+    name: "ClientFileFinder"
+    state: 0
+    args {
+      type_url: "type.googleapis.com/grr.FileFinderArgs"
+      value: "\n\014/remote/path\020\0002\002\010\002"
+    }
+    flow_id: "A1B2C3D4E5F6A1B2"
+    client_id: "C.0000000000000001"
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "ERRORED_BUT_CORRECT",
+    name: "TimelineFlow",
+    state: 3,
+    args: {
+      type_url: "type.googleapis.com/grr.TimelineArgs"
+      value: "\n\001/"
+    }
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "INCORRECT"
+    name: "TimelineFlow"
+    state: 1
+    args: {
+      type_url: "type.googleapis.com/grr.TimelineArgs"
+      value: "\n\005/root"
+    }
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "CORRECT_LIN",
+    name: "TimelineFlow",
+    state: 1
+    args: {
+      type_url: "type.googleapis.com/grr.TimelineArgs"
+      value: "\n\001/"
+    }
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "INCORRECT_WIN",
+    name: "TimelineFlow",
+    state: 1
+    args: {
+      type_url: "type.googleapis.com/grr.TimelineArgs"
+      value: "\n\014/C:/Users/test"
+    }
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "CORRECT_WIN",
+    name: "TimelineFlow",
+    state: 1
+    args: {
+      type_url: "type.googleapis.com/grr.TimelineArgs"
+      value: "\n\004/C:/"
+    }
+  }
+]

@@ -1,0 +1,17 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERERRORFLOWID"
+name: "ClientFileFinder"
+args {
+  type_url: "type.googleapis.com/google3.ops.security.grr.FileFinderArgs"
+  value: "\n\014/remote/path\020\0002\002\010\002"
+}
+state: ERROR
+flow_id: "CLIENTFILEFINDERERRORFLOWID"
+client_id: "C.0000000000000001"
+started_at: 25000000  # 25 seconds past epoch
+last_active_at: 30000000  # 30 seconds past epoch
+context {
+  status: "Error: message FlowStatus {\n backtrace : \'\'\n client_id : \'C.0000000000000001\'\n cpu_time_used :   message CpuSeconds {\n     system_cpu_time : 0.0\n     user_cpu_time : 0.015625\n    }\n error_message : \"Test error\"\n flow_id : \'CLIENTFILEFINDERERRORFLOWID\'\n network_bytes_sent : 210\n request_id : 1\n response_id : 1\n runtime_us : Duration:\n    25086 us\n status : IOERROR\n}"
+}
+creator: "creator"

@@ -1,0 +1,18 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/client.proto
+# proto-message: ApiClient
+urn: "aff4:/C.0000000000000001"
+os_info {
+  system: "Darwin"
+  release: "OSX"
+  version: "13.3.1"
+  machine: "x86_64"
+  kernel: "22.4.0"
+  install_date: 1684167242229110
+  fqdn: "host.corp.google.com"
+}
+first_seen_at: 1658876722840519
+last_seen_at: 1684891463783055  # 2023-05-23T18:52:51.682331Z
+last_booted_at: 1684885470000000
+last_clock: 1684891462758196
+age: 1684364790433983
+client_id: "C.0000000000000001"

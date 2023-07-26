@@ -1,0 +1,12 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/INTERROGATEFLOWID"
+name: "ClientFileFinder"
+args {
+  type_url: "type.googleapis.com/google3.ops.security.grr.InterrogateArgs"
+  value: "\010\000"
+}
+state: RUNNING
+flow_id: "INTERROGATEFLOWID"
+client_id: "C.0000000000000001"
+started_at: 4000000  # 4 seconds past epoch

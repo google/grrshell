@@ -99,6 +99,7 @@ class GRRShellREPL:
           logger.debug('User entered "%s"', text)
           self._HandleCommand(text)
         except KeyboardInterrupt:
+          print('CTRL+C captured (use CTRL+D to exit)')
           logger.debug('User entered <CTRL+C>')
         except EOFError:  # CTRL+D
           raise

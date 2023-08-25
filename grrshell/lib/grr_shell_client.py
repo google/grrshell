@@ -23,6 +23,7 @@ import re
 import shutil
 import stat
 import tempfile
+import threading
 import time
 import traceback
 import typing
@@ -98,6 +99,10 @@ class GRRShellClient:
     except grr_errors.AccessForbiddenError as exc:
       raise errors.NoGRRApprovalError(f'No approval for client access to {self._grr_client_id}') from exc
 
+    self._last_seen_monitor = _LastSeenMonitor(
+        self._grr_stubby.Client(self._grr_client_id))
+    self._last_seen_monitor.StartMonitor()
+
   def __del__(self):
     """Destructor for GRRShellClient.
 
@@ -138,10 +143,7 @@ class GRRShellClient:
     Returns:
       The last seen time of the client.
     """
-    last_seen = datetime.datetime.fromtimestamp(self._grr_client.Get().data.last_seen_at / 1000000,
-                                                tz=datetime.timezone.utc)
-    logger.debug('Last seen: %s', last_seen)
-    return last_seen
+    return self._last_seen_monitor.GetLastSeen()
 
   def GetClientID(self) -> str:
     """Gets the GRR client ID of the client.
@@ -482,6 +484,8 @@ class GRRShellClient:
     """
     flow_handle = self._grr_client.Flow(flow_id).Get()
 
+    logger.debug('Flow args: %s', flow_handle.data)
+
     lines: list[str] = [
         flow_handle.data.name,
         f'\tCreator     {flow_handle.data.creator}',
@@ -490,13 +494,22 @@ class GRRShellClient:
         f'\tStarted     {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)}',
         f'\tLast Active {utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)}']
 
-    if flow_handle.data.state == flows_pb2.FlowContext.ERROR and flow_handle.data.context.status:
+    if (flow_handle.data.state == flows_pb2.FlowContext.ERROR):
       # We need to manually parse out the error message :(
       status_lines = [l.strip() for l in flow_handle.data.context.status.splitlines()]
-      error_message = [l.replace('error_message : ', '') for l in status_lines
-                       if l.startswith('error_message : ')][0]
+      if flow_handle.data.context.status:
+        if 'error_message' in flow_handle.data.context.status:
+          error_message = [l.replace('error_message : ', '') for l in status_lines if l.startswith('error_message : ')][0]
+          error_message = f'\t\t{error_message}'
+        else:
+          error_message = f'\t\t{flow_handle.data.context.status}'
+      elif flow_handle.data.error_description:
+        error_message = '\n'.join([f'\t\t{line}' for line in flow_handle.data.error_description.splitlines()])
+      else:
+        error_message = '\t\tMissing error message'
+
       lines.append('\tError Details')
-      lines.append(f'\t\t{error_message}')
+      lines.append(error_message)
 
     return '\n'.join(lines)
 
@@ -850,3 +863,41 @@ class GRRShellClient:
 
     raise errors.NotResumeableFlowTypeError(
         f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, not supported for resumption.')
+
+
+class _LastSeenMonitor:
+  """Background caching class for LastSeen time of a client."""
+
+  DELAY = 30  # seconds
+
+  def __init__(self, grr_client):
+    """Initialise the Monitor."""
+    self._last_seen: datetime.datetime
+    self._mutex = threading.Lock()
+    self._grr_client = grr_client
+
+  def StartMonitor(self):
+    """Starts the monitor background thread."""
+    logger.debug('Starting LastSeen monitor thread')
+
+    thread_handle = threading.Thread(target=self._Monitor, daemon=True)
+    thread_handle.start()
+
+  def GetLastSeen(self) -> datetime.datetime:
+    """Gets the last seen time.
+
+    Returns:
+      The cached last seen time of the client.
+    """
+    with self._mutex:
+      return self._last_seen
+
+  def _Monitor(self):
+    """Repeatedly polls for the last seen time."""
+    while True:
+      with self._mutex:
+        self._last_seen = datetime.datetime.fromtimestamp(
+            self._grr_client.Get().data.last_seen_at / 1000000,
+            tz=datetime.timezone.utc)
+      logger.debug('Last seen: %s', self._last_seen)
+      time.sleep(self.DELAY)

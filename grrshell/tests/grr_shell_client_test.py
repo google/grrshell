@@ -109,6 +109,36 @@ _MOCK_CLIENTFILEFINDER_ERROR_DETAIL = """ClientFileFinder
 \tError Details
 \t\t"Test error\""""
 
+_MOCK_TIMELINE_ERROR_DETAIL = """TimelineFlow
+\tCreator     creator
+\tArgs        
+\tState       ERROR
+\tStarted     1970-01-01T00:00:16Z
+\tLast Active 1970-01-01T00:00:32Z
+\tError Details
+\t\tThe timeline root directory not specified"""
+
+_MOCK_TIMELINE_ERROR_STACKTRACE_DETAIL = """TimelineFlow
+\tCreator     creator
+\tArgs        /
+\tState       ERROR
+\tStarted     1970-01-01T00:00:17Z
+\tLast Active 1970-01-01T00:00:33Z
+\tError Details
+\t\tStacktrace placeholder
+\t\t  second line
+\t\t    third line
+\t\tfourth line"""
+
+_MOCK_TIMELINE_ERROR_NOMESSAGE_DETAIL = """TimelineFlow
+\tCreator     creator
+\tArgs        /
+\tState       ERROR
+\tStarted     1970-01-01T00:00:18Z
+\tLast Active 1970-01-01T00:00:34Z
+\tError Details
+\t\tMissing error message"""
+
 _MOCK_APIFLOW_GETFILE_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_getfile_running.textproto'
 _MOCK_APIFLOW_GETFILE_RUNNING = flow.Flow(
     data=text_format.Parse(open(_MOCK_APIFLOW_GETFILE_RUNNING_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
@@ -122,6 +152,21 @@ _MOCK_APIFLOW_INTERROGATE_RUNNING = flow.Flow(
 _MOCK_APIFLOW_TIMELINE_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_timeline_running.textproto'
 _MOCK_APIFLOW_TIMELINE_RUNNING = flow.Flow(
     data=text_format.Parse(open(_MOCK_APIFLOW_TIMELINE_RUNNING_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+
+_MOCK_APIFLOW_TIMELINE_ERROR_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_timeline_error.textproto'
+_MOCK_APIFLOW_TIMELINE_ERROR = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_TIMELINE_ERROR_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+
+_MOCK_APIFLOW_TIMELINE_ERROR_STACKTRACE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_timeline_error_stacktrace.textproto'
+_MOCK_APIFLOW_TIMELINE_ERROR_STACKTRACE = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_TIMELINE_ERROR_STACKTRACE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+
+_MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_timeline_error_nomessage.textproto'
+_MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
     context=mock.MagicMock())
 
 _MOCK_APIFLOW_LISTFLOWS_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_listflows.textproto'
@@ -781,8 +826,12 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertIn('\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow / RUNNING', result)
 
   @parameterized.named_parameters(
-      ('success', _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED, _MOCK_CLIENTFILEFINDER_TERMINATED_DETAIL),
-      ('failure', _MOCK_APIFLOW_CFF_DOWNLOAD_ERROR, _MOCK_CLIENTFILEFINDER_ERROR_DETAIL))
+      ('cff_success', _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED, _MOCK_CLIENTFILEFINDER_TERMINATED_DETAIL),
+      ('cff_failure', _MOCK_APIFLOW_CFF_DOWNLOAD_ERROR, _MOCK_CLIENTFILEFINDER_ERROR_DETAIL),
+      ('timeline_failure', _MOCK_APIFLOW_TIMELINE_ERROR, _MOCK_TIMELINE_ERROR_DETAIL),
+      ('timeline_failure_stacktrace', _MOCK_APIFLOW_TIMELINE_ERROR_STACKTRACE, _MOCK_TIMELINE_ERROR_STACKTRACE_DETAIL),
+      ('timeline_failure_nomessage', _MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE, _MOCK_TIMELINE_ERROR_NOMESSAGE_DETAIL)
+  )
   def test_Detail(self, mock_flow, expected_detail):
     """Tests the Detail method."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = mock_flow

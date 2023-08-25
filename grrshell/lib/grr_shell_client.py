@@ -43,7 +43,6 @@ from grrshell.lib import errors
 from grrshell.lib import utils
 
 
-_GRR_ENDPOINT = 'blade:grr-adminui-stubby'
 _STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=3)
 _ROOT_TIMELINE_REGEX = r'/|(?:/?)[A-Z]:[/\\]'
 _RESUMABLE_FLOW_TYPES = ('ClientFileFinder', 'ArtifactCollectorFlow', 'GetFile')
@@ -818,10 +817,10 @@ class GRRShellClient:
       return param
 
     parsing_functions = {
-        'google3.ops.security.grr.FileFinderArgs': FileFinderArgsParse,
-        'google3.ops.security.grr.GetFileArgs': GetFileArgsParse,
-        'google3.ops.security.grr.TimelineArgs': TimelineArgsParse,
-        'google3.ops.security.grr.ArtifactCollectorFlowArgs': ArtifactCollectorFlowArgsParse,
+        'grr.FileFinderArgs': FileFinderArgsParse,
+        'grr.GetFileArgs': GetFileArgsParse,
+        'grr.TimelineArgs': TimelineArgsParse,
+        'grr.ArtifactCollectorFlowArgs': ArtifactCollectorFlowArgsParse,
     }
 
     typename = flow_handle.data.args.TypeName()

@@ -1,7 +1,7 @@
 urn: "aff4:/C.0000000000000001/GETFILERUNNINGFLOWID"
 name: "GetFile"
 args {
-  type_url: "type.googleapis.com/google3.ops.security.grr.GetFileArgs"
+  type_url: "type.googleapis.com/grr.GetFileArgs"
   value: "\nF\010\005\0221C:/Users/username/Downloads/Firefox Installer.exeZ\017Zone.Identifier"
 }
 state: RUNNING

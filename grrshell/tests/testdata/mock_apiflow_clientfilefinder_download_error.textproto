@@ -1,7 +1,7 @@
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERERRORFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/google3.ops.security.grr.FileFinderArgs"
+  type_url: "type.googleapis.com/grr.FileFinderArgs"
   value: "\n\014/remote/path\020\0002\002\010\002"
 }
 state: ERROR

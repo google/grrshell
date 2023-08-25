@@ -1,7 +1,7 @@
 urn: "aff4:/C.0000000000000001/ARTIFACTCOLLECTORFLOWRUNNINGFLOWID"
 name: "ArtifactCollectorFlow"
 args {
-  type_url: "type.googleapis.com/google3.ops.security.grr.ArtifactCollectorFlowArgs"
+  type_url: "type.googleapis.com/grr.ArtifactCollectorFlowArgs"
   value: "\n\rartifact_name2\000@\000x\000"
 }
 state: RUNNING

@@ -1,7 +1,7 @@
 urn: "aff4:/C.0000000000000001/TIMELINEFLOWID"
 name: "TimelineFlow"
 args {
-  type_url: "type.googleapis.com/google3.ops.security.grr.TimelineArgs"
+  type_url: "type.googleapis.com/grr.TimelineArgs"
   value: "\n\001/"
 }
 state: ERROR

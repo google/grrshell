@@ -1,7 +1,7 @@
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERHASHRUNNINGFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/google3.ops.security.grr.FileFinderArgs"
+  type_url: "type.googleapis.com/grr.FileFinderArgs"
   value: "\n-C:/Users/ramo/Downloads/Firefox Installer.exe\020\0052\002\010\001"
 }
 state: RUNNING

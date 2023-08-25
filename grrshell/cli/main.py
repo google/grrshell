@@ -158,7 +158,7 @@ def _SetUpLogging() -> None:
   fh = logging.logging.FileHandler(filename)
 
   fh.setFormatter(logging.logging.Formatter(
-      fmt=('%(asctime)s.%(msecs)03d - %(module)s.%(funcName)s:%(lineno)d - %(message)s'),
+      fmt=('%(asctime)s.%(msecs)03d - %(threadName)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s'),
       datefmt='%Y-%m-%dT%H:%M:%S'))
   logger.addHandler(fh)
 

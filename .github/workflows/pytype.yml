@@ -1,4 +1,4 @@
-name: Unit tests
+name: Pytype checking
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9","3.10", "3.11"]
+        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}

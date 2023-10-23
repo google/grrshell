@@ -2,7 +2,7 @@
 name = "grrshell"
 version = "0.1.0"
 description = ""
-authors = ["ramoj@google.com"]
+authors = ["Ramo <ramoj@google.com>"]
 readme = "README.md"
 
 

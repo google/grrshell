@@ -1,5 +1,7 @@
 name: Unit tests
-on: [push]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 jobs:
   poetry:
     runs-on: ubuntu-latest

@@ -27,6 +27,9 @@ _SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 _SAMPLE_TIMELINE_WINDOWS_D_DRIVE = 'grrshell/tests/testdata/sample_timeline_windows_d_drive'
 
 
+# pytype: disable=attribute-error
+
+
 class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
   """Unit tests for the Grr Shell Emulated FS class with a linux FS."""
 

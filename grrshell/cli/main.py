@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,6 @@ Supports commands shell, collect, artefact, help
 
 from collections.abc import Sequence
 import datetime
-import humanize
 import os
 import sys
 import tempfile
@@ -38,7 +37,8 @@ _DEBUG_HELP = 'Enable debug logging'
 _GRR_PASSWORD_HELP = 'GRR password'
 _GRR_SERVER_HELP = 'GRR HTTP Endpoint'
 _GRR_USERNAME_HELP = 'GRR username'
-_INITIAL_TIMELINE_HELP = 'Specify an existing timeline flow to use instead of looking for a recent flow, or launching a new timeline flow. (Optional)'
+_INITIAL_TIMELINE_HELP = ('Specify an existing timeline flow to use instead of looking for a recent flow, or launching a new timeline flow.'
+                          ' (Optional)')
 _LOCAL_PATH_HELP = 'Location to store the collected files'
 _MAX_FILE_SIZE_HELP = 'The max file size for GRR collection. 0 for the GRR default. (Optional)'
 _REMOTE_PATH_HELP = 'ClientFileFinder expression for remote files'
@@ -90,14 +90,20 @@ artefact - Schedule and collect an ArtifactCollector flow
 help - Display this text and exit
 
 Enable debug logging with --{_DEBUG.name}
+
+Raise bugs here: https://github.com/google/grrshell/issues/new
 """
-# TODO add Bug link once in github
 
 
 logger = logging.logging.getLogger('grrshell')
 
 
-def main(argv: Sequence[str]) -> None:
+def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
+  """Main driver.
+
+  Args:
+    argv: Command line args.
+  """
   argv = argv[1:]  # Remove the binary path from argv, we don't need it
 
   if _DEBUG.value:
@@ -174,9 +180,8 @@ def _SetUpLogging() -> None:
   logger.debug('debug flag: %s', _DEBUG.value)
 
 
-def Main():
+def Main():  # pylint: disable=missing-function-docstring
   app.run(main)
 
 if __name__ == '__main__':
   app.run(main)
-

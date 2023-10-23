@@ -1,4 +1,4 @@
-name: Pytype checking
+name: Pytype
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -19,6 +19,6 @@ jobs:
       run: |
         pip install poetry
         poetry install
-    - name: Run pytype on dftimewolf and tests
+    - name: Run pytype
       run: |
         poetry run pytype --config pytype.conf

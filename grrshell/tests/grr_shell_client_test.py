@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,7 +45,7 @@ from grrshell.lib import grr_shell_client
 # generates complaints that the following flags aren't defined. So, define them for absl.
 flags.DEFINE_string('s', '', '')
 flags.DEFINE_string('p', '', '')
-app._run_init(sys.argv, app.parse_flags_with_usage)
+app._run_init(sys.argv, app.parse_flags_with_usage)  # pylint: disable=protected-access
 
 
 _TEST_GRR_URL = 'grr-url'
@@ -54,6 +54,7 @@ _TEST_GRR_PASS = 'pass'
 _TEST_CLIENT_FQDN = 'host.domain.com'
 _TEST_CLIENT_GRR_ID = 'C.0000000000000001'
 
+# pylint: disable=consider-using-with
 _MOCK_DARWIN_CLIENT_PROTO_FILE = 'grrshell/tests/testdata/mock_client_darwin.textproto'
 _MOCK_DARWIN_CLIENT = client.Client(
     data=text_format.Parse(open(_MOCK_DARWIN_CLIENT_PROTO_FILE, 'rb').read().decode('utf-8'), client_pb2.ApiClient()),
@@ -170,7 +171,8 @@ _MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE = flow.Flow(
     context=mock.MagicMock())
 
 _MOCK_APIFLOW_LISTFLOWS_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_listflows.textproto'
-_MOCK_APIFLOW_LISTFLOWS_FLOWS = text_format.Parse(open(_MOCK_APIFLOW_LISTFLOWS_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiListFlowsResult())
+_MOCK_APIFLOW_LISTFLOWS_FLOWS = text_format.Parse(
+    open(_MOCK_APIFLOW_LISTFLOWS_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiListFlowsResult())
 _MOCK_APIFLOW_LISTFLOWS = [flow.Flow(data=item, context=mock.MagicMock())
                            for item in _MOCK_APIFLOW_LISTFLOWS_FLOWS.items]
 
@@ -277,7 +279,6 @@ _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_DATA = open(_MOCK_ZIP_WINDOWS_GETFILE_ADS_EM
 
 _MAX_FILE_SIZE_1GB = 1024 * 1024 * 1024
 
-
 def _BuildMockArtifactDescriptors() -> list[artifact.Artifact]:
   """Builds the mock artifact descriptors list, used by ListArtifacts."""
   artifactdescriptor_proto_files = (
@@ -297,6 +298,10 @@ def _BuildMockArtifactDescriptors() -> list[artifact.Artifact]:
   return to_return
 
 
+# pylint: enable=consider-using-with
+# pylint: disable=protected-access
+
+
 class GrrShellClientLinuxTest(parameterized.TestCase):
   """Unit tests for the Grr Shell client."""
 
@@ -304,7 +309,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
 
@@ -326,7 +331,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     self.assertEqual(self.client.GetOS(), 'Linux')
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def test_NoApproval(self, mock_InitHttp):
+  def test_NoApproval(self, mock_InitHttp):  # pylint: disable=invalid-name
     """Tests no approval for the client is correctly handled."""
     mock_grr_api = mock.Mock()
     mock_InitHttp.return_value = mock_grr_api
@@ -341,11 +346,11 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   def test_Cleanup(self):
     """Tests destructor."""
     with mock.patch.object(self.client._collection_threads, 'shutdown') as mock_shutdown:
-      self.client.__del__()  # __del__ instead of del because of GC
+      self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
       mock_shutdown.assert_called_once()
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def test_InvalidClient(self, mock_InitHttp):
+  def test_InvalidClient(self, mock_InitHttp):  # pylint: disable=invalid-name
     """Tests an invalid client correctly fails."""
     mock_InitHttp.return_value = self.mock_grr_api
     self.mock_grr_api.SearchClients.return_value = []
@@ -665,7 +670,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
 
   def test_CollectFilesBadDirectory(self):
     """Tests collecting files fails when an invalid local path is used."""
-    path = self.create_tempfile().full_path
+    path = self.create_tempfile().full_path  # pylint: disable=no-member
 
     with self.assertRaisesRegex(FileExistsError, path):
       self.client.CollectFiles('/remote/path', path)
@@ -754,7 +759,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client.CollectFilesInBackground('/remote/path', local_path)
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC
+        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
 
         self.assertIn(
             'Waiting for collection threads CLIENTFILEFINDERRUNNINGFLOWID to finish (<CTRL+C> to force exit)\n',
@@ -789,7 +794,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client._collection_threads.shutdown()
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC
+        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
 
         self.assertIn('CLIENTFILEFINDERRUNNINGFLOWID - Test exception', buf.getvalue())
 
@@ -804,7 +809,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
                             _MOCK_APIFLOW_INTERROGATE_RUNNING,
                             _MOCK_APIFLOW_TIMELINE_RUNNING]
 
-    with (mock.patch.object(self.client._grr_client, 'ListFlows') as mock_listflows):
+    with mock.patch.object(self.client._grr_client, 'ListFlows') as mock_listflows:
       mock_listflows.return_value = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
                                      _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
                                      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
@@ -847,7 +852,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
     self.mock_grr_api = mock.Mock()
@@ -1286,7 +1291,7 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
 

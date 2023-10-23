@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -73,6 +73,15 @@ class _EmulatedFile:
   stats: _TimelineRow
 
   def GetLSEntry(self, dot_name: bool = False) -> '_LSEntry':
+    """Return an LSEntry object for the directory entry.
+
+    Args:
+      dot_name: True if the objects name should be a '.', False for the objects
+        actual name.
+
+    Returns:
+      The LSEntry for the object.
+    """
     return _LSEntry(self.stats.mode_as_string, self.stats.uid, self.stats.gid, self.stats.size,
                     utils.UnixTSToReadable(self.stats.mtime), '.' if dot_name else self.filename)
 
@@ -94,7 +103,7 @@ class _LSEntry:
   name: str = ''
 
   def __str__(self) -> str:
-    return (f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12} {self.mtime} {self.name}')
+    return f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12} {self.mtime} {self.name}'
 
   def __lt__(self, other: '_LSEntry') -> bool:
     if (self.mode_as_string[0], other.mode_as_string[0]).count('d') == 1:
@@ -251,8 +260,7 @@ class GrrShellEmulatedFS:
         globbed_names = fnmatch.filter([e.name for e in entries], glob_tail)
         entries = [e for e in entries if e.name in globbed_names]
       return entries
-    else:
-      return [path_entry.GetLSEntry()]
+    return [path_entry.GetLSEntry()]
 
   def Cd(self,
          path: str) -> None:
@@ -425,4 +433,3 @@ class GrrShellEmulatedFS:
       to_return.append(child)
 
     return to_return
-

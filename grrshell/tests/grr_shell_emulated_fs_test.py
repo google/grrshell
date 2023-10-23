@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,7 @@ _SAMPLE_TIMELINE_WINDOWS_D_DRIVE = 'grrshell/tests/testdata/sample_timeline_wind
 
 
 # pytype: disable=attribute-error
+# pylint: disable=protected-access
 
 
 class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
@@ -37,7 +38,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_LINUX, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
 
   def test_ParseTimelineFlow(self):
@@ -50,7 +51,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
   def test_AddRowToEmulatedFS(self):
     """Tests the AddRowToEmulatedFS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
-    timeline_entry = ('0|/root/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0')
+    timeline_entry = '0|/root/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0'
     row = grr_shell_emulated_fs._TimelineRow(*timeline_entry.split(sep='|'))
 
     self.assertNotIn('file', self.emulated_fs._root.children['root'].children)
@@ -185,7 +186,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_WINDOWS, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
 
   def test_ParseTimelineFlow(self):
@@ -301,7 +302,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     self.assertFalse(self.emulated_fs.RemotePathExists('D:/directory/foobar'))
 
     with open(_SAMPLE_TIMELINE_WINDOWS_D_DRIVE, 'rb') as f:
-        second_timeline = f.read().decode('utf-8')
+      second_timeline = f.read().decode('utf-8')
 
     self.emulated_fs.ClearPath('D:/', 0)
     self.emulated_fs.ParseTimelineFlow(second_timeline)
@@ -317,7 +318,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_DARWIN, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Darwin')
 
   def test_ParseTimelineFlow(self):
@@ -330,7 +331,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
   def test_AddRowToEmulatedFS(self):
     """Tests the AddRowToEmulatedFS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
-    timeline_entry = ('0|/usr/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0')
+    timeline_entry = '0|/usr/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0'
     row = grr_shell_emulated_fs._TimelineRow(*timeline_entry.split(sep='|'))
 
     self.assertNotIn('file', self.emulated_fs._root.children['usr'].children)
@@ -461,7 +462,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_LINUX, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
     self.emulated_fs.Cd('/root/.local/share')
@@ -477,7 +478,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
     self.assertIn('.bashrc', self.emulated_fs._root.children['root'].children)
 
     with open(_SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb') as f:
-        overlay_data = f.read().decode('utf-8')
+      overlay_data = f.read().decode('utf-8')
 
     # Parse overlay.
     self.emulated_fs.ClearPath('/root/.local/share', 75)

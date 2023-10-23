@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,9 +16,10 @@
 import contextlib
 import datetime
 import io
-import prompt_toolkit
 import sys
 from unittest import mock
+
+import prompt_toolkit
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -41,6 +42,9 @@ _ARTIFACT_NAMES = ['first', 'second', 'third', 'fourth']
 _CLIENT_ID = 'C.0000000000000001'
 
 
+# pylint: disable=protected-access,consider-using-with
+
+
 class GRRShellREPLTest(parameterized.TestCase):
   """Unit tests for the Grr Shell REPL driver."""
 
@@ -50,14 +54,14 @@ class GRRShellREPLTest(parameterized.TestCase):
   @mock.patch.object(grr_shell_client.GRRShellClient, '_ResolveClientID')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'GetOS')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'CollectTimeline')
-  def setUp(self,
+  def setUp(self,  # pylint: disable=arguments-differ
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
             _mock_init_stubby):
     """Set up tests."""
     super().setUp()
-    
+
     mock_collect_timeline.return_value = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
     mock_get_os.return_value = 'Linux'
     mock_resolve_client_id.return_value = _CLIENT_ID
@@ -87,7 +91,7 @@ class GRRShellREPLTest(parameterized.TestCase):
                              expected_relative_timeline,
                              mock_dt):
     """Tests generating the status bar content."""
-    def mock_isinstance_method(obj, classinfo):
+    def mock_isinstance_method(obj, classinfo):  # pylint: disable=invalid-name
       """Mocked version of isinstance needed due to the wrapping of datetime."""
       if hasattr(classinfo, '_mock_wraps'):
         return isinstance(obj, classinfo._mock_wraps)
@@ -428,7 +432,7 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
   @mock.patch.object(grr_shell_client.GRRShellClient, '_ResolveClientID')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'GetOS')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'CollectTimeline')
-  def setUp(self,
+  def setUp(self,  # pylint: disable=arguments-differ
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
@@ -484,7 +488,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
   def setUp(self):
     """Set up tests."""
     super().setUp()
-    
+
     timeline_data = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
@@ -555,7 +559,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
   def setUp(self):
     """Set up tests."""
     super().setUp()
-    
+
     timeline_data = open(_SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
@@ -596,4 +600,3 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
 
 if __name__ == '__main__':
   absltest.main()
-

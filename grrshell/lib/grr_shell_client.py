@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -466,10 +466,10 @@ class GRRShellClient:
       flow_handle.WaitUntilDone()
       lines = callback(flow_handle) + ['']
       return lines
-    else:
-      future = self._collection_threads.submit(self._WaitAndCompleteFlow, flow_handle, local_path)
-      self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future, flow_handle)
-      return [f'Queued {flow_handle.flow_id} for completion.']
+
+    future = self._collection_threads.submit(self._WaitAndCompleteFlow, flow_handle, local_path)
+    self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future, flow_handle)
+    return [f'Queued {flow_handle.flow_id} for completion.']
 
   def Detail(self,
              flow_id: str) -> str:
@@ -493,7 +493,7 @@ class GRRShellClient:
         f'\tStarted     {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)}',
         f'\tLast Active {utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)}']
 
-    if (flow_handle.data.state == flows_pb2.FlowContext.ERROR):
+    if flow_handle.data.state == flows_pb2.FlowContext.ERROR:
       # We need to manually parse out the error message :(
       status_lines = [l.strip() for l in flow_handle.data.context.status.splitlines()]
       if flow_handle.data.context.status:
@@ -713,16 +713,16 @@ class GRRShellClient:
     with io.BytesIO() as buf:
       for chunk in ads_flow.GetFilesArchive():
         buf.write(chunk)
-      zip_file = zipfile.ZipFile(buf)
-      try:
-        zip_content = zip_file.read(path).decode('utf-8')
-        lines: list[str] = []
-        lines.append('    Zone.Identifier:')
-        for line in zip_content.splitlines():
-          lines.append(f'        {line}')
-        return lines
-      except KeyError as e:
-        return []
+      with zipfile.ZipFile(buf) as zip_file:
+        try:
+          zip_content = zip_file.read(path).decode('utf-8')
+          lines: list[str] = []
+          lines.append('    Zone.Identifier:')
+          for line in zip_content.splitlines():
+            lines.append(f'        {line}')
+          return lines
+        except KeyError:
+          return []
 
   def _ExportFlowResults(self,
                          ff_flow: flow.Flow,
@@ -748,27 +748,28 @@ class GRRShellClient:
         fp.write(chunk)
 
       logger.debug('Extracting zip file for %s to %s', ff_flow.flow_id, local_path)
-      zip_file = zipfile.ZipFile(fp)
-      zip_root_dir = f'{self._grr_client.client_id}_flow_{ff_flow.data.name}_{ff_flow.flow_id}'
 
-      for file_info in zip_file.infolist():
-        if (file_info.filename.endswith(f'{ff_flow.flow_id}/MANIFEST') or
-            file_info.filename.endswith(f'{self._grr_client.client_id}/client_info.yaml')):
-          logger.debug('Skipping extraction of %s based on filename match', file_info.filename)
-          continue
-        logger.debug('Extracting %s to %s', file_info.filename, local_path)
+      with zipfile.ZipFile(fp) as zip_file:
+        zip_root_dir = f'{self._grr_client.client_id}_flow_{ff_flow.data.name}_{ff_flow.flow_id}'
 
-        nested_file_path = file_info.filename.replace(
-            os.path.join(zip_root_dir, self._grr_client.client_id, 'fs', os_base) + os.path.sep,
-            '')
-        dest_file_path = os.path.join(local_path, nested_file_path)
-        os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
+        for file_info in zip_file.infolist():
+          if (file_info.filename.endswith(f'{ff_flow.flow_id}/MANIFEST') or
+              file_info.filename.endswith(f'{self._grr_client.client_id}/client_info.yaml')):
+            logger.debug('Skipping extraction of %s based on filename match', file_info.filename)
+            continue
+          logger.debug('Extracting %s to %s', file_info.filename, local_path)
 
-        extracted_file = zip_file.extract(file_info, local_path)
-        logger.debug('Moving %s to %s', extracted_file, dest_file_path)
-        shutil.move(extracted_file, dest_file_path)
+          nested_file_path = file_info.filename.replace(
+              os.path.join(zip_root_dir, self._grr_client.client_id, 'fs', os_base) + os.path.sep,
+              '')
+          dest_file_path = os.path.join(local_path, nested_file_path)
+          os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
 
-      shutil.rmtree(os.path.join(local_path, zip_root_dir))
+          extracted_file = zip_file.extract(file_info, local_path)
+          logger.debug('Moving %s to %s', extracted_file, dest_file_path)
+          shutil.move(extracted_file, dest_file_path)
+
+        shutil.rmtree(os.path.join(local_path, zip_root_dir))
 
   def _CreateOutputDir(self,
                        local_path: str) -> None:

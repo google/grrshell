@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -168,7 +168,7 @@ class GRRShellREPL:
                            now: datetime.datetime) -> str:
     if now - _OFFLINE_THRESHOLD > input_time:
       return _OFFLINE
-    elif now - _STALE_THRESHOLD > input_time:
+    if now - _STALE_THRESHOLD > input_time:
       return _STALE
     return _ONLINE
 
@@ -482,6 +482,7 @@ class GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
     self._commands_with_params = commands_with_params
     self._artifacts = artifacts
 
+  # pylint: disable=inconsistent-return-statements
   def get_completions(self,
                       document: prompt_toolkit.document.Document,
                       complete_event: prompt_toolkit.completion.base.CompleteEvent) -> ...:
@@ -564,4 +565,3 @@ class GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
     """
     suggestions = [s for s in self._artifacts if in_text.lower() in s.lower()]
     return suggestions, -len(in_text)
-

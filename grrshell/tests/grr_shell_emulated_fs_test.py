@@ -26,6 +26,27 @@ _SAMPLE_TIMELINE_LINUX_OVERLAY = 'grrshell/tests/testdata/sample_timeline_linux_
 _SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 _SAMPLE_TIMELINE_WINDOWS_D_DRIVE = 'grrshell/tests/testdata/sample_timeline_windows_d_drive'
 
+_EXPECTED_OFFLINE_INFO_FILE = """/root/.bashrc
+    mode:   -rw-------
+    inode:  6815746
+    uid:    0
+    gid:    0
+    size:   571 (571 Bytes)
+    atime:  1644801907.2463605 - 2022-02-14T01:25:07Z
+    mtime:  1618084800.0 - 2021-04-10T20:00:00Z
+    ctime:  1644801907.2463605 - 2022-02-14T01:25:07Z
+    crtime: 0.0 - 1970-01-01T00:00:00Z"""
+_EXPECTED_OFFLINE_INFO_DIRECTORY = """/root
+    mode:   drwx--S---
+    inode:  6815745
+    uid:    0
+    gid:    0
+    size:   4096 (4.0 KiB)
+    atime:  1683360703.224626 - 2023-05-06T08:11:43Z
+    mtime:  1679618652.750104 - 2023-03-24T00:44:12Z
+    ctime:  1679618652.750104 - 2023-03-24T00:44:12Z
+    crtime: 0.0 - 1970-01-01T00:00:00Z"""
+
 
 # pytype: disable=attribute-error
 # pylint: disable=protected-access
@@ -177,6 +198,17 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
 
     with self.assertRaisesRegex(expected_exception, base_dir):
       self.emulated_fs.Find(base_dir, needle)
+
+  @parameterized.named_parameters(
+      ('file', '/root/.bashrc', _EXPECTED_OFFLINE_INFO_FILE),
+      ('directory', '/root/', _EXPECTED_OFFLINE_INFO_DIRECTORY),
+      ('error', '/nonexistent', 'No such file or directory: /nonexistent'),
+  )
+  def test_OfflineFileInfo(self, path, expected_result):
+    """Tests OfflineFileInfo with an invalid path."""
+    self.emulated_fs.ParseTimelineFlow(self.timeline_data)
+    result = self.emulated_fs.OfflineFileInfo(path)
+    self.assertEqual(result, expected_result)
 
 
 class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):

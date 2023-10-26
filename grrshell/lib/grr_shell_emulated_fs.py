@@ -20,6 +20,7 @@ import re
 from typing import cast, Union
 
 from absl import logging
+import humanize
 
 from grrshell.lib import errors
 from grrshell.lib import utils
@@ -398,6 +399,38 @@ class GrrShellEmulatedFS:
       parent.children.pop(node.filename)
     except errors.InvalidRemotePathError:
       pass  # Path doesn't exist, so clearing fails, and that's ok.
+
+  def OfflineFileInfo(self, remote_path: str) -> str:
+    """Returns file information based on the EFS content.
+
+    Args:
+      remote_path: The remote file to return cached info on.
+
+    Returns:
+      A string with information on the remote file.
+    """
+    remote_path = self.NormaliseFSPath(remote_path)
+
+    try:
+      entry = self._ResolveRemotePathToEmulatedFS(remote_path)
+    except errors.InvalidRemotePathError:
+      return f'No such file or directory: {remote_path}'
+
+    natural_size = humanize.naturalsize(entry.stats.size, binary=True, format='%.1f')
+
+    lines: list[str] = []
+    lines.append(entry.stats.name)
+    lines.append(f'    mode:   {entry.stats.mode_as_string}')
+    lines.append(f'    inode:  {entry.stats.inode}')
+    lines.append(f'    uid:    {entry.stats.uid}')
+    lines.append(f'    gid:    {entry.stats.gid}')
+    lines.append(f'    size:   {entry.stats.size} 'f'({natural_size})')
+    lines.append(f'    atime:  {entry.stats.atime} - {utils.UnixTSToReadable(entry.stats.atime)}')
+    lines.append(f'    mtime:  {entry.stats.mtime} - {utils.UnixTSToReadable(entry.stats.mtime)}')
+    lines.append(f'    ctime:  {entry.stats.ctime} - {utils.UnixTSToReadable(entry.stats.ctime)}')
+    lines.append(f'    crtime: {entry.stats.crtime} - {utils.UnixTSToReadable(entry.stats.crtime)}')
+
+    return '\n'.join(lines)
 
   def _ResolveRemotePathToEmulatedFS(self, remote_path: str) -> _FSEntry:
     """Resolves a remote path string to a pointer into the emulated FS.

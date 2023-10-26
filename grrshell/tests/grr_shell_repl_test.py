@@ -222,16 +222,20 @@ class GRRShellREPLTest(parameterized.TestCase):
       mock_collect_timeline.assert_called_once()
       mock_parse_timeline.assert_called_once_with(mock_collect_timeline.return_value, 0)
 
+  @parameterized.named_parameters(
+      ('basic', 'collect path', '/path'),
+      ('directory', 'collect root', '/root/*'),
+      ('recursive', 'collect root/**', '/root/**'),
+      ('file', 'collect root/.bashrc', '/root/.bashrc'),
+  )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
-  def test_RunShell_collect(self, mock_prompt):
+  def test_RunShell_collect(self, in_text, expected_param, mock_prompt):
     """Tests entering collect at the prompt correctly calls CollectFilesInBackground."""
-    mock_prompt.side_effect = ['collect path', EOFError]
+    mock_prompt.side_effect = [in_text, EOFError]
 
     with mock.patch.object(self.shell._grr_shell_client, 'CollectFilesInBackground') as mock_collect:
       self.shell.RunShell()
-      mock_collect.assert_called_once_with('/path', './')
-
-      mock_prompt.side_effect = ['collect path', EOFError]
+      mock_collect.assert_called_once_with(expected_param, './')
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_info(self, mock_prompt):
@@ -241,6 +245,15 @@ class GRRShellREPLTest(parameterized.TestCase):
     with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_fileinfo:
       self.shell.RunShell()
       mock_fileinfo.assert_called_once_with('/path', False)
+
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_info_offline(self, mock_prompt):
+    """Tests entering stat at the prompt correctly calls StatFile."""
+    mock_prompt.side_effect = ['info /path --offline', EOFError]
+
+    with mock.patch.object(self.shell._emulated_fs, 'OfflineFileInfo') as mock_fileinfo:
+      self.shell.RunShell()
+      mock_fileinfo.assert_called_once_with('/path')
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_flows(self, mock_prompt):

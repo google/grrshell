@@ -333,7 +333,16 @@ class GRRShellREPL:
       print('collect requires 1 argument')
       return
 
-    self._grr_shell_client.CollectFilesInBackground(self._emulated_fs.NormaliseFSPath(params[0]), './')
+    remote_path = self._emulated_fs.NormaliseFSPath(params[0])
+
+    if self._emulated_fs.RemotePathExists(remote_path, dirs_only=True):
+      remote_path = f'{remote_path}/*'
+      remote_path = os.path.normpath(remote_path)
+      print(f'Directory collection attempted: updating to "{remote_path}". This is not recursive! For recursive collection, use '
+            'ClientFileFinder recursion syntax - ** or **N. See https://grr-doc.readthedocs.io/en/latest/investigating-with-grr/'
+            'flows/specifying-file-paths.html?#path-globbing for more on CSFF syntax.')
+
+    self._grr_shell_client.CollectFilesInBackground(self._emulated_fs.NormaliseFSPath(remote_path), './')
 
   def _Artifact(self,
                 params: Sequence[str]) -> None:
@@ -360,19 +369,29 @@ class GRRShellREPL:
       params: Command components from _HandleCommand.
     """
     collect_ads = False
+    offline = False
+
     if '--ads' in params:
       collect_ads = True
       params.remove('--ads')
+    if '--offline' in params:
+      offline = True
+      params.remove('--offline')
 
+    if offline and collect_ads:
+      print('--offline and --ads are mutually exclusive')
+      return
     if len(params) != 1:
       print('info requires 1 argument')
       return
 
     path = self._emulated_fs.NormaliseFSPath(params[0])
-    collect_ads = (not self._emulated_fs.RemotePathExists(path, dirs_only=True)
-                   if collect_ads else collect_ads)
+    collect_ads = (not self._emulated_fs.RemotePathExists(path, dirs_only=True) if collect_ads else collect_ads)
 
-    print(self._grr_shell_client.FileInfo(path, collect_ads))
+    if offline:
+      print(self._emulated_fs.OfflineFileInfo(path))
+    else:
+      print(self._grr_shell_client.FileInfo(path, collect_ads))
 
   def _Flows(self,
              params: list[str]) -> None:

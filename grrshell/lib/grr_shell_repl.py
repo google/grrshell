@@ -90,6 +90,10 @@ _INFO_HELP_LONG = """\tOptional flags:
 \t--ads - for Zone.Identifier alternate data stream collection.
 \t--offline - Use the cached TimelineFlow info rather than launching a flow.
 \tThese two flags are mutually exclusive."""
+_LS_HELP_LONG = """\tDefault sorting is dirs first, alphabetically. Optional flags:
+\t-S - sort by size
+\t-r - Reverse sort order
+\t-t - sort by modification time"""
 _REFRESH_HELP_LONG = """\tOptionally provide a path to collect the TimelineFlow for a subdirectory."""
 _RESUME_HELP_LONG = """\tRequires a Flow ID argument. (Re)attaches the flow to the current GRRShell session.
 \tClientFileFinder, ArtifactCollectorFlow, and GetFile (Zone.Identifier ADS only) are supported.
@@ -109,7 +113,7 @@ _FIND_HELP = _Help('\tSearch for file paths matching a pattern.', _FIND_HELP_LON
 _FLOWS_HELP = _Help('\tList background flows status.', _FLOWS_HELP_LONG)
 _HELP_HELP = _Help('\tThis help text (aliases "h" and "?")', _HELP_HELP_LONG)
 _INFO_HELP = _Help('\tFetch FS information and hashes of a remote file (synchronous).', _INFO_HELP_LONG)
-_LS_HELP = _Help('\tList directory entries, with an optional path argument.')
+_LS_HELP = _Help('\tList directory entries, with an optional path argument.', _LS_HELP_LONG)
 _PWD_HELP = _Help('\tPrint current directory')
 _REFRESH_HELP = _Help('\tRefresh remote emulated FS (synchronous)', _REFRESH_HELP_LONG)
 _RESUME_HELP = _Help('\tResume an existing flow', _RESUME_HELP_LONG)
@@ -325,7 +329,7 @@ class GRRShellREPL:
     if self._emulated_fs.GetPWD() == path:
       self._Cd([path])
 
-  def _Ls(self, params: Sequence[str]) -> None:
+  def _Ls(self, params: list[str]) -> None:
     """Prints directory entries for a given directory.
 
     getopt options:

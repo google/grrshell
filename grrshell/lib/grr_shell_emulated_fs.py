@@ -42,10 +42,10 @@ class _TimelineRow:
   uid: int = 0
   gid: int = 0
   size: int = 0
-  atime: float = 0.0
-  mtime: float = 0.0
-  ctime: float = 0.0
-  crtime: float = 0.0
+  atime: float = 0.0  # Access
+  mtime: float = 0.0  # Modified
+  ctime: float = 0.0  # Changed
+  crtime: float = 0.0  # Created
 
   def __post_init__(self):
     # Just casting to our actual types since they are all received as `str`
@@ -110,6 +110,12 @@ class _LSEntry:
     if (self.mode_as_string[0], other.mode_as_string[0]).count('d') == 1:
       return self.mode_as_string[0] == 'd'
     return self.name < other.name
+
+
+_LS_SORT_KEY_MAP = {
+    'S': lambda l: l.size,
+    't': lambda l: l.mtime
+}
 
 
 class GrrShellEmulatedFS:
@@ -220,7 +226,9 @@ class GrrShellEmulatedFS:
       return False
 
   def Ls(self,
-         path: str | None = None) -> list[_LSEntry]:
+         path: str | None = None,
+         sortkey: str | None = None,
+         ascending: bool = True) -> list[_LSEntry]:
     """Returns a list of ls entries for a path.
 
     If a directory is provided, a list of children is returned. If a file is
@@ -228,6 +236,8 @@ class GrrShellEmulatedFS:
 
     Args:
       path: The path in which to look for children.
+      sortkey: Sorting method. Key for _LS_SORT_KEY_MAP dict.
+      ascending: True if entries should be in ascending order, False otherwise,
 
     Returns:
       A list of ls entries.
@@ -260,8 +270,9 @@ class GrrShellEmulatedFS:
       if glob_tail:
         globbed_names = fnmatch.filter([e.name for e in entries], glob_tail)
         entries = [e for e in entries if e.name in globbed_names]
-      return entries
-    return [path_entry.GetLSEntry()]
+    else:
+      entries = [path_entry.GetLSEntry()]
+    return sorted(entries, key=_LS_SORT_KEY_MAP.get(sortkey), reverse=not ascending)
 
   def Cd(self,
          path: str) -> None:

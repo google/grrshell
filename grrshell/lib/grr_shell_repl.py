@@ -15,6 +15,7 @@
 
 import dataclasses
 import datetime
+import getopt
 import os
 import re
 import shlex
@@ -149,9 +150,9 @@ class GRRShellREPL:
 
   def RunShell(self) -> None:
     """Runs the GRR Shell REPL."""
-    completer = GrrShellREPLPromptCompleter(self._emulated_fs, list(self._commands.keys()),
-                                            [name for name in self._commands if self._commands[name].path_param],
-                                            self._grr_shell_client.GetSupportedArtifacts())
+    completer = _GrrShellREPLPromptCompleter(self._emulated_fs, list(self._commands.keys()),
+                                             [name for name in self._commands if self._commands[name].path_param],
+                                             self._grr_shell_client.GetSupportedArtifacts())
     prompts = prompt_toolkit.PromptSession(completer=completer, style=_PROMPT_STYLE)
 
     try:
@@ -324,25 +325,49 @@ class GRRShellREPL:
     if self._emulated_fs.GetPWD() == path:
       self._Cd([path])
 
-  def _Ls(self,
-          params: Sequence[str]) -> None:
+  def _Ls(self, params: Sequence[str]) -> None:
     """Prints directory entries for a given directory.
+
+    getopt options:
+      * S - sort by size
+      * a - ignored
+      * l - ignored
+      * r - Reverse sort order
+      * t - sort by modification time
 
     Args:
       params: Command components from _HandleCommand.
     """
-    # Muscle memory for the author is to type `ls -l` - Ignore the `-l`
-    params = [p for p in params if p[0] != '-']
+    try:
+      optlist, args = getopt.getopt(params, 'Salrt')
+    except getopt.GetoptError as error:
+      print(error)
+      return
 
-    if len(params) not in (0, 1):
+    if len(args) not in (0, 1):
       print('Error: ls requires 0 or 1 arguments. Usage:')
       print(self._commands['ls'].help)
       return
 
-    path = params[0] if len(params) == 1 else None
+    if sum((1 for opt, _ in optlist if opt[1] in 'St')) not in (0, 1):
+      print('Options S, t are mutually exclusive')
+      return
+
+    sortkey = None
+    reverse = True
+
+    for opt, _ in optlist:
+      if opt == '-S':
+        sortkey = 'S'
+      elif opt == '-t':
+        sortkey = 't'
+      elif opt == '-r':
+        reverse = False
+
+    path = args[0] if len(args) == 1 else None
 
     try:
-      entries = sorted(self._emulated_fs.Ls(path))
+      entries = self._emulated_fs.Ls(path, sortkey, reverse)
       for e in entries:
         if e.mode_as_string.startswith('d'):
           e.name = _ANSI_BLUE_START + e.name + _ANSI_COLOUR_END
@@ -556,7 +581,7 @@ class GRRShellREPL:
     print(self._grr_shell_client.Detail(params[0]))
 
 
-class GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
+class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
   """Implements autocomplete for the GRR Shell REPL.
 
   Uses the emulated FS for path completion, and also generates completions for

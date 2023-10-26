@@ -128,22 +128,37 @@ class GRRShellREPLTest(parameterized.TestCase):
       for c in _ALIASES:
         self.assertNotIn(f'\t{c} ', buf.getvalue())
 
+  @parameterized.named_parameters(
+      ('with_path', 'ls path', 'path', None, True),
+      ('without_path', 'ls', None, None, True),
+      ('without_path_reversed', 'ls -r', None, None, False),
+      ('without_path_size', 'ls -S', None, 'S', True),
+      ('without_path_time', 'ls -t', None, 't', True),
+      ('without_path_time_reversed', 'ls -tr', None, 't', False),
+  )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
-  def test_RunShell_ls(self, mock_prompt):
+  def test_RunShell_ls(self,
+                       in_text,
+                       expected_path,
+                       expected_sort_key,
+                       expected_reversed,
+                       mock_prompt):
     """Tests entering ls at the prompt correctly calls ls for the emulated_fs."""
-    mock_prompt.side_effect = ['ls path', EOFError]
+    mock_prompt.side_effect = [in_text, EOFError]
 
     with mock.patch.object(self.shell._emulated_fs, 'Ls') as mock_ls:
       self.shell.RunShell()
-      mock_ls.assert_called_once_with('path')
+      mock_ls.assert_called_once_with(expected_path, expected_sort_key, expected_reversed)
 
   @parameterized.named_parameters(
       ('nonexistent', 'ls /nonexist', 'No such file or directory: /nonexist'),
       ('bad_glob', 'ls /tm*/file', 'Globbing only supported for the final path component: /tm*'),
+      ('invalid_option', 'ls -x', 'option -x not recognized'),
+      ('mutually_exclusive_options', 'ls -St', 'Options S, t are mutually exclusive')
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_ls_error(self, in_text, expected_error, mock_prompt):
-    """Tests ls against a nonexistent fs entry."""
+    """Tests ls failure modes."""
     mock_prompt.side_effect = [in_text, EOFError]
 
     with io.StringIO() as buf, contextlib.redirect_stdout(buf):
@@ -554,7 +569,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     commands = [name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
 
-    self.completer = grr_shell_repl.GrrShellREPLPromptCompleter(
+    self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
 
   def test_Init(self):
@@ -626,7 +641,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     commands = [name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
 
-    self.completer = grr_shell_repl.GrrShellREPLPromptCompleter(
+    self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
 
   def test_Init(self):

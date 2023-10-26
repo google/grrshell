@@ -124,22 +124,22 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     self.assertEqual(result, expected_resuslt)
 
   @parameterized.named_parameters(
-      ('no_path', None, ['.', 'root', 'odd', 'root_file']),
-      ('root_dir', '/root', ['.', '.bashrc', '.profile', '.pki', '.cache', '.local', '.wget-hsts', '.ssh', '.lesshst',
-                             '.augeas', 'dead.letter', 'xorg.conf.new', 'directory with spaces']),
+      ('no_path', None, ['.', 'odd', 'root', 'root_file']),
+      ('root_dir', '/root', ['.', '.augeas', '.cache', '.local', '.pki', '.ssh', 'directory with spaces', '.bashrc', '.lesshst', '.profile',
+                             '.wget-hsts', 'dead.letter', 'xorg.conf.new']),
       ('file', '/root/.bashrc', ['.bashrc']),
-      ('glob_raw', '*', ['.', 'root', 'odd', 'root_file']),
-      ('glob_root', '/*', ['.', 'root', 'odd', 'root_file']),
+      ('glob_raw', '*', ['.', 'odd', 'root', 'root_file']),
+      ('glob_root', '/*', ['.', 'odd', 'root', 'root_file']),
       ('glob_slash_ro', '/ro*', ['root', 'root_file']),
-      ('glob_subdir', '/root/*e*', ['.profile', '.cache', '.wget-hsts', '.lesshst', '.augeas', 'dead.letter',
-                                    'xorg.conf.new', 'directory with spaces'])
+      ('glob_subdir', '/root/*e*', ['.augeas', '.cache', 'directory with spaces', '.lesshst', '.profile', '.wget-hsts', 'dead.letter',
+                                    'xorg.conf.new'])
   )
   def test_LS(self, path: str | None, expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 
     results = [r.name for r in self.emulated_fs.Ls(path)]
-    self.assertCountEqual(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   def test_LSGlobbingError(self):
     """Tests LS with invalid globbing."""

@@ -842,7 +842,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the Detail method."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = mock_flow
 
-    result = self.client.Detail(mock_flow.flow_id)
+    result = self.client.FlowDetail(mock_flow.flow_id)
     self.assertEqual(result, expected_detail)
 
 

@@ -22,17 +22,14 @@ import itertools
 import os
 import re
 import shutil
-import stat
 import tempfile
 import threading
 import time
 import traceback
-import typing
 from typing import Any, Callable, Iterator
 import zipfile
 
 from absl import logging
-import humanize
 
 from grr_api_client import errors as grr_errors
 from grr_api_client import flow
@@ -41,6 +38,7 @@ from grr_response_proto import flows_pb2
 from grr_response_proto import jobs_pb2
 from grr_response_proto import timeline_pb2
 from grrshell.lib import errors
+from grrshell.lib import formatters
 from grrshell.lib import utils
 
 
@@ -197,6 +195,7 @@ class GRRShellClient:
     self._max_collect_size = max_collect_size
     self._artefact_list: list[str] = []
     self.last_timeline_time = 0
+    self._formatter = formatters.GRRShellFormatter()
 
     try:
       self._grr_client.VerifyAccess()
@@ -368,7 +367,7 @@ class GRRShellClient:
       print(f'Running ADS (Zone.Identifier) collection flow {ads_flow_handle.flow_id}')
       try:
         ads_flow_handle.WaitUntilDone()
-        zone_ads_result = self._ExtractADSResults(ads_flow_handle)
+        zone_ads_result = self._formatter.FormatFlowResult(ads_flow_handle)
       except grr_errors.FlowFailedError as error:
         msg = f'ADS Flow collection {ads_flow_handle.flow_id} failed: {str(error)}'
         logger.debug(msg, exc_info=True)
@@ -382,7 +381,7 @@ class GRRShellClient:
       print(msg)
       return ''
 
-    lines: list[str] = self._ExtractFileFinderInfo(hash_flow_handle)
+    lines: list[str] = self._formatter.FormatFlowResult(hash_flow_handle)
     if zone_ads_result:
       lines += zone_ads_result
     lines.append('')
@@ -514,8 +513,7 @@ class GRRShellClient:
     running = sum((1 for f in self._launched_flows.values() if f.future.running()))
     return running, len(self._launched_flows)
 
-  def SetMaxFilesize(self,
-                     size: int) -> None:
+  def SetMaxFilesize(self, size: int) -> None:
     """Sets the max file size for collection.
 
     Args:
@@ -523,8 +521,7 @@ class GRRShellClient:
     """
     self._max_collect_size = size
 
-  def ListAllFlows(self,
-                   count: int) -> str:
+  def ListAllFlows(self, count: int) -> str:
     """Lists flow details for flows launched on the client.
 
     Includes all flows, not just those launched by GRRShell.
@@ -582,8 +579,7 @@ class GRRShellClient:
     self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future, flow_handle)
     return [f'Queued {flow_handle.flow_id} for completion.']
 
-  def Detail(self,
-             flow_id: str) -> str:
+  def FlowDetail(self, flow_id: str) -> str:
     """Fetches detailed information on a flow.
 
     Args:
@@ -623,8 +619,7 @@ class GRRShellClient:
 
     return '\n'.join(lines)
 
-  def _ResolveClientID(self,
-                       client_id: str) -> str:
+  def _ResolveClientID(self, client_id: str) -> str:
     """Resolves a client id or hostname to a client id.
 
     Args:
@@ -697,8 +692,7 @@ class GRRShellClient:
 
     return ff_flow
 
-  def _CreateADSCollectionFlow(self,
-                               remote_path: str) -> flow.Flow:
+  def _CreateADSCollectionFlow(self, remote_path: str) -> flow.Flow:
     """Creates a GetFile flow for a Zone.Identifier ADS of a file."""
     flow_args = flows_pb2.GetFileArgs(
         pathspec=jobs_pb2.PathSpec(path=remote_path,
@@ -711,8 +705,7 @@ class GRRShellClient:
 
     return ads_flow
 
-  def _CreateArtifactCollectorFlow(self,
-                                   artifact: str) -> flow.Flow:
+  def _CreateArtifactCollectorFlow(self, artifact: str) -> flow.Flow:
     """Launches an ArtifactCollectorFlow.
 
     Args:
@@ -761,91 +754,6 @@ class GRRShellClient:
 
     self._ExportFlowResults(ff_flow, local_path)
 
-  def _ExtractFileFinderInfo(self,
-                             flow_handle: flow.Flow) -> list[str]:
-    """Extracts file info for a ClientFileFinder flow with HASH action.
-
-    Args:
-      flow_handle: The flow to extract file info from.
-
-    Returns:
-      A list of lines detailing the flow results.
-    """
-    lines: list[str] = []
-
-    for result in flow_handle.ListResults():
-      payload = typing.cast(flows_pb2.FileFinderResult, result.payload)
-      stats = payload.stat_entry
-      natural_size = humanize.naturalsize(stats.st_size,
-                                          binary=True,
-                                          format='%.1f')
-
-      if self.GetOS() == utils.WINDOWS:
-        pathname = stats.pathspec.mount_point + stats.pathspec.nested_path.path
-      else:
-        pathname = stats.pathspec.path
-
-      lines.append(pathname)
-      lines.append(f'    mode:           {stat.filemode(stats.st_mode)}')
-      lines.append(f'    inode:          {stats.st_ino}')
-      lines.append(f'    dev:            {stats.st_dev}')
-      lines.append(f'    st_nlink:       {stats.st_nlink}')
-      lines.append(f'    st_uid:         {stats.st_uid}')
-      lines.append(f'    st_gid:         {stats.st_gid}')
-      lines.append(f'    st_size:        {stats.st_size} 'f'({natural_size})')
-      lines.append(f'    st_atime:       {stats.st_atime} - {utils.UnixTSToReadable(stats.st_atime)}')
-      lines.append(f'    st_mtime:       {stats.st_mtime} - {utils.UnixTSToReadable(stats.st_mtime)}')
-      lines.append(f'    st_ctime:       {stats.st_ctime} - {utils.UnixTSToReadable(stats.st_ctime)}')
-      lines.append(f'    st_blocks:      {stats.st_blocks}')
-      lines.append(f'    st_blksize:     {stats.st_blksize}')
-      lines.append(f'    st_rdev:        {stats.st_rdev}')
-      lines.append(f'    st_flags_osx:   {stats.st_flags_osx}')
-      lines.append(f'    st_flags_linux: {stats.st_flags_linux}')
-      lines.append(f'    md5:            {payload.hash_entry.md5.hex()}')
-      lines.append(f'    sha1:           {payload.hash_entry.sha1.hex()}')
-      lines.append(f'    sha256:         {payload.hash_entry.sha256.hex()}')
-
-    return lines
-
-  def _ExtractADSResults(self,
-                         ads_flow: flow.Flow) -> list[str]:
-    """Given an ADS collection (GetFile flow), extracts the content.
-
-    ADS is a secondary stream in NTFS, so the data is returned similar to
-    collecting a file: file content within a collected zip, so needs to be
-    extracted.
-
-    Args:
-      ads_flow: The flow handle for the ADS collection.
-
-    Returns:
-      A list of strings, split on newlines, of the ADS data.
-    """
-    results = list(ads_flow.ListResults())
-    if not results:
-      return []
-
-    stats = typing.cast(jobs_pb2.StatEntry, results[0].payload)  # Only ever one result
-    pathtype = jobs_pb2.PathSpec.PathType.Name(stats.pathspec.nested_path.pathtype).lower()
-    path = (f'{ads_flow.client_id}_flow_{ads_flow.data.name}_'
-            f'{ads_flow.flow_id}/{ads_flow.client_id}/fs/{pathtype}'
-            f'{stats.pathspec.path}{stats.pathspec.nested_path.path}:'
-            f'{stats.pathspec.nested_path.stream_name}')
-
-    with io.BytesIO() as buf:
-      for chunk in ads_flow.GetFilesArchive():
-        buf.write(chunk)
-      with zipfile.ZipFile(buf) as zip_file:
-        try:
-          zip_content = zip_file.read(path).decode('utf-8')
-          lines: list[str] = []
-          lines.append('    Zone.Identifier:')
-          for line in zip_content.splitlines():
-            lines.append(f'        {line}')
-          return lines
-        except KeyError:
-          return []
-
   def _ExportFlowResults(self,
                          ff_flow: flow.Flow,
                          local_path: str) -> None:
@@ -882,8 +790,7 @@ class GRRShellClient:
           logger.debug('Extracting %s to %s', file_info.filename, local_path)
 
           nested_file_path = file_info.filename.replace(
-              os.path.join(zip_root_dir, self._grr_client.client_id, 'fs', os_base) + os.path.sep,
-              '')
+              os.path.join(zip_root_dir, self._grr_client.client_id, 'fs', os_base) + os.path.sep, '')
           dest_file_path = os.path.join(local_path, nested_file_path)
           os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
 
@@ -893,8 +800,7 @@ class GRRShellClient:
 
         shutil.rmtree(os.path.join(local_path, zip_root_dir))
 
-  def _CreateOutputDir(self,
-                       local_path: str) -> None:
+  def _CreateOutputDir(self, local_path: str) -> None:
     """Creates a directory for collected file output.
 
     Args:
@@ -951,9 +857,8 @@ class GRRShellClient:
       return parsing_functions[typename](flow_handle.data.args)
     return '<UNSUPPORTED FLOW TYPE>'
 
-  def _GetResumableFlowSyncDetails(
-      self,
-      flow_handle: flow.Flow) -> tuple[bool, Callable[[flow.Flow], list[str]] | None]:
+  def _GetResumableFlowSyncDetails(self,
+                                   flow_handle: flow.Flow) -> tuple[bool, Callable[[flow.Flow], list[str]] | None]:
     """Given a flow, details if resuming the flow should be synchronous or not.
 
     If a flow is synchronous, then a callback is also provided for how to handle
@@ -974,14 +879,14 @@ class GRRShellClient:
       NotResumeableFlowTypeError: If the flow is not supported for resumption.
     """
     if flow_handle.data.name == 'GetFile':
-      return True, self._ExtractADSResults
+      return True, self._formatter.FormatFlowResult
     if flow_handle.data.name == 'ArtifactCollectorFlow':
       return False, None
     if flow_handle.data.name == 'ClientFileFinder':
       ff_args = flows_pb2.FileFinderArgs.FromString(flow_handle.data.args.value)
       if ff_args.action.action_type == flows_pb2.FileFinderAction.DOWNLOAD:
         return False, None
-      return True, self._ExtractFileFinderInfo
+      return True, self._formatter.FormatFlowResult
 
     raise errors.NotResumeableFlowTypeError(
         f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, not supported for resumption.')

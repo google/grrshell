@@ -445,7 +445,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering detail at the prompt calls the correct method."""
     mock_prompt.side_effect = ['detail flowid', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'Detail') as mock_detail:
+    with mock.patch.object(self.shell._grr_shell_client, 'FlowDetail') as mock_detail:
 
       self.shell.RunShell()
       mock_detail.assert_called_once_with('flowid')

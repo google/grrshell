@@ -582,7 +582,7 @@ class GRRShellREPL:
       print(self._commands['detail'].help)
       return
 
-    print(self._grr_shell_client.Detail(params[0]))
+    print(self._grr_shell_client.FlowDetail(params[0]))
 
 
 class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):

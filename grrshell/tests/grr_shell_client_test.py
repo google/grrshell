@@ -730,6 +730,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
+    self.client._RetrieveSupportedArtifacts()
     self.assertCountEqual(self.client.GetSupportedArtifacts(), ['LinuxOne', 'LinuxTwo', 'AllOne', 'AllTwo'])
 
   @mock.patch.object(futures.Future, 'exception', return_value=False)
@@ -798,18 +799,12 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
 
         self.assertIn('CLIENTFILEFINDERRUNNINGFLOWID - Test exception', buf.getvalue())
 
-  @mock.patch.object(flow.Flow, 'Get')
-  def test_ListAllFlows(self, mock_get):
+  def test_ListAllFlows(self):
     """Tests the ListAllFlows method."""
-    mock_get.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
-                            _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
-                            _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
-                            _MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED,
-                            _MOCK_APIFLOW_GETFILE_RUNNING,
-                            _MOCK_APIFLOW_INTERROGATE_RUNNING,
-                            _MOCK_APIFLOW_TIMELINE_RUNNING]
-
-    with mock.patch.object(self.client._grr_client, 'ListFlows') as mock_listflows:
+    with (mock.patch.object(self.client._grr_client, 'ListFlows'
+                            ) as mock_listflows,
+          mock.patch.object(self.client._flow_monitor._grr_client, 'Flow'
+                            ) as mock_monitor_flow):
       mock_listflows.return_value = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
                                      _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
                                      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
@@ -817,7 +812,13 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
                                      _MOCK_APIFLOW_GETFILE_RUNNING,
                                      _MOCK_APIFLOW_INTERROGATE_RUNNING,
                                      _MOCK_APIFLOW_TIMELINE_RUNNING]
+      mock_monitor_flow.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
+                                       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
+                                       _MOCK_APIFLOW_GETFILE_RUNNING,
+                                       _MOCK_APIFLOW_INTERROGATE_RUNNING,
+                                       _MOCK_APIFLOW_TIMELINE_RUNNING]
 
+      self.client._flow_monitor.StartMonitor()
       result = self.client.ListAllFlows(10)
 
       self.assertIn('\tCLIENTFILEFINDERRUNNINGFLOWID 1970-01-01T00:00:05Z ClientFileFinder DOWNLOAD /remote/path RUNNING', result)
@@ -841,7 +842,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the Detail method."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = mock_flow
 
-    result = self.client.Detail('CLIENTFILEFINDERTERMINATEDFLOWID')
+    result = self.client.Detail(mock_flow.flow_id)
     self.assertEqual(result, expected_detail)
 
 
@@ -1263,6 +1264,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
+    self.client._RetrieveSupportedArtifacts()
     self.assertCountEqual(self.client.GetSupportedArtifacts(), ['WindowsOne', 'WindowsTwo', 'AllOne', 'AllTwo'])
 
   @parameterized.named_parameters(
@@ -1370,6 +1372,7 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
+    self.client._RetrieveSupportedArtifacts()
     self.assertCountEqual(self.client.GetSupportedArtifacts(), ['DarwinOne', 'DarwinTwo', 'AllOne', 'AllTwo'])
 
 

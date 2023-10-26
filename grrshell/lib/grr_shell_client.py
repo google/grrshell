@@ -13,6 +13,7 @@
 # limitations under the License.
 """GRR Shell client."""
 
+import abc
 from concurrent import futures
 import dataclasses
 import datetime
@@ -27,7 +28,7 @@ import threading
 import time
 import traceback
 import typing
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 import zipfile
 
 from absl import logging
@@ -57,6 +58,110 @@ class _LaunchedFlow:
   future: futures.Future[None]
   flow: flow.Flow
   exception_displayed: bool = False
+
+
+class _MonitorBase(metaclass=abc.ABCMeta):
+  """Base class for background monitor classes."""
+
+  DELAY = 60
+
+  @abc.abstractmethod
+  def __init__(self):
+    self._mutex = threading.Lock()
+
+  @abc.abstractmethod
+  def _SingleFetch(self):
+    """Collect the information that will be cached."""
+
+  def StartMonitor(self):
+    """Starts the monitor background thread."""
+    logger.debug('Starting monitor thread')
+    threading.Thread(target=self._Monitor, daemon=True).start()
+
+  def _Monitor(self):
+    """Repeatedly polls _SingleFetch()."""
+    while True:
+      with self._mutex:
+        self._SingleFetch()
+      time.sleep(self.DELAY)
+
+
+class _LastSeenMonitor(_MonitorBase):
+  """Background caching class for LastSeen time of a client."""
+
+  def __init__(self, grr_client: grr_api.client.ClientRef):
+    """Initialises the Monitor."""
+    super().__init__()
+    self._last_seen: datetime.datetime
+    self._grr_client: grr_api.client.ClientRef = grr_client
+
+  def _SingleFetch(self):
+    """Caches the LastSeen time of the client."""
+    self._last_seen = datetime.datetime.fromtimestamp(
+        self._grr_client.Get().data.last_seen_at / 1000000,
+        tz=datetime.timezone.utc)
+    logger.debug('Last seen: %s', self._last_seen)
+
+  def GetLastSeen(self) -> datetime.datetime:
+    """Gets the last seen time.
+
+    Returns:
+      The cached last seen time of the client.
+    """
+    with self._mutex:
+      return self._last_seen
+
+
+class _FlowMonitor(_MonitorBase):
+  """Background caching of Flow information."""
+
+  def __init__(self, grr_client: grr_api.client.ClientRef):
+    """Initialises the FlowMonitor."""
+    super().__init__()
+    self._grr_client: grr_api.client.ClientRef = grr_client
+    self._flows: dict[str, flow.Flow] = {}
+
+  def _Monitor(self):
+    """Repeatedly polls _SingleFetch()."""
+    while True:
+      with self._mutex:
+        self._SingleFetch()
+
+      for flow_id in self._flows:
+        self._UpdateCachedFlow(flow_id)
+
+      time.sleep(self.DELAY)
+
+  def _SingleFetch(self):
+    """Fetches all launched flows on the client."""
+    logger.debug('Fetching launched flows')
+    for flow_handle in self._grr_client.ListFlows():
+      if flow_handle.flow_id not in self._flows:
+        self._flows[flow_handle.flow_id] = flow_handle
+
+  def GetFlowsInfoList(self, count: int = 50) -> Iterator[flow.Flow]:
+    """Returns info on flows from the cache."""
+    with self._mutex:
+      values = list(self._flows.values())
+      values = sorted(values,
+                      key=lambda x: x.data.started_at, reverse=True)
+      for f in itertools.islice(values, 0, count):
+        yield f
+
+  def GetFlow(self, flow_id: str) -> flow.Flow:
+    """Returns cached info on a single flow."""
+    self._UpdateCachedFlow(flow_id)
+    with self._mutex:
+      return self._flows[flow_id]
+
+  def _UpdateCachedFlow(self, flow_id: str) -> None:
+    """Fetches and caches info for a single flow."""
+    if (flow_id not in self._flows or
+        not self._flows[flow_id].data.args.TypeName() or
+        self._flows[flow_id].data.state == flows_pb2.FlowContext.State.RUNNING):
+      with self._mutex:
+        flow_handle = self._grr_client.Flow(flow_id).Get()
+        self._flows[flow_id] = flow_handle
 
 
 class GRRShellClient:
@@ -98,8 +203,13 @@ class GRRShellClient:
     except grr_errors.AccessForbiddenError as exc:
       raise errors.NoGRRApprovalError(f'No approval for client access to {self._grr_client_id}') from exc
 
-    self._last_seen_monitor = _LastSeenMonitor(
-        self._grr_stubby.Client(self._grr_client_id))
+    self._artefact_list_mutex: threading.Lock = threading.Lock()
+    threading.Thread(target=self._RetrieveSupportedArtifacts, daemon=True).start()
+
+    self._flow_monitor: _FlowMonitor = _FlowMonitor(self._grr_stubby.Client(self._grr_client_id))
+    self._flow_monitor.StartMonitor()
+
+    self._last_seen_monitor = _LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
     self._last_seen_monitor.StartMonitor()
 
   def __del__(self):
@@ -153,12 +263,9 @@ class GRRShellClient:
     return self._grr_client_id
 
   def GetSupportedArtifacts(self) -> list[str]:
-    """Returns a list of supported artifacts for the client."""
-    if not self._artefact_list:
-      self._artefact_list = [a.data.artifact.name for a in self._grr_stubby.ListArtifacts()
-                             if self.GetOS() in a.data.artifact.supported_os]
-    logger.debug('%d supported artefacts found', len(self._artefact_list))
-    return self._artefact_list
+    """Returns the cached list of supported artifacts for the client."""
+    with self._artefact_list_mutex:
+      return self._artefact_list
 
   def GetLastTimeline(self) -> str | None:
     """Returns the Flow ID of the most recent root timeline that is not stale.
@@ -429,10 +536,9 @@ class GRRShellClient:
       A string with details, one per line, of floaws launched on the client.
     """
     lines: list[str] = []
-    flows = itertools.islice(self._grr_client.ListFlows(), count)
+    flows = self._flow_monitor.GetFlowsInfoList(count=count)
 
-    for f in flows:
-      flow_handle = f.Get()
+    for flow_handle in flows:
       lines.append(f'\t{flow_handle.flow_id} {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)} '
                    f'{flow_handle.data.name} {self._ParseArgsFromFlow(flow_handle)} '
                    f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
@@ -486,7 +592,7 @@ class GRRShellClient:
     Returns:
       Detailed information on the flow.
     """
-    flow_handle = self._grr_client.Flow(flow_id).Get()
+    flow_handle = self._flow_monitor.GetFlow(flow_id)
 
     logger.debug('Flow args: %s', flow_handle.data)
 
@@ -541,6 +647,17 @@ class GRRShellClient:
     logger.debug('%d potential clients found', len(results))
     logger.debug('Potential clients: %s', ', '.join([r.client_id for r in results]))
     raise errors.ClientNotFoundError(f'{len(results)} potential clients found with search {client_id}. Specify a client ID instead.')
+
+  def _RetrieveSupportedArtifacts(self) -> None:
+    """Collects and caches a list of supported artifacts for the client."""
+    with self._artefact_list_mutex:
+      if not self._artefact_list:
+        logger.debug('Fetching supported artifacts from grr')
+        self._artefact_list = [
+            a.data.artifact.name for a in self._grr_stubby.ListArtifacts()
+            if self.GetOS() in a.data.artifact.supported_os]
+        logger.debug('%d supported artefacts collected',
+                     len(self._artefact_list))
 
   def _CreateFileFinderFlow(self,
                             remote_path: str,
@@ -868,41 +985,3 @@ class GRRShellClient:
 
     raise errors.NotResumeableFlowTypeError(
         f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, not supported for resumption.')
-
-
-class _LastSeenMonitor:
-  """Background caching class for LastSeen time of a client."""
-
-  DELAY = 30  # seconds
-
-  def __init__(self, grr_client):
-    """Initialise the Monitor."""
-    self._last_seen: datetime.datetime
-    self._mutex = threading.Lock()
-    self._grr_client = grr_client
-
-  def StartMonitor(self):
-    """Starts the monitor background thread."""
-    logger.debug('Starting LastSeen monitor thread')
-
-    thread_handle = threading.Thread(target=self._Monitor, daemon=True)
-    thread_handle.start()
-
-  def GetLastSeen(self) -> datetime.datetime:
-    """Gets the last seen time.
-
-    Returns:
-      The cached last seen time of the client.
-    """
-    with self._mutex:
-      return self._last_seen
-
-  def _Monitor(self):
-    """Repeatedly polls for the last seen time."""
-    while True:
-      with self._mutex:
-        self._last_seen = datetime.datetime.fromtimestamp(
-            self._grr_client.Get().data.last_seen_at / 1000000,
-            tz=datetime.timezone.utc)
-      logger.debug('Last seen: %s', self._last_seen)
-      time.sleep(self.DELAY)

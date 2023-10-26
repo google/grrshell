@@ -43,7 +43,7 @@ from grrshell.lib import errors
 from grrshell.lib import utils
 
 
-_STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=3)
+_STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=12)
 _ROOT_TIMELINE_REGEX = r'/|(?:/?)[A-Z]:[/\\]'
 _RESUMABLE_FLOW_TYPES = ('ClientFileFinder', 'ArtifactCollectorFlow', 'GetFile')
 
@@ -161,7 +161,12 @@ class GRRShellClient:
     return self._artefact_list
 
   def GetLastTimeline(self) -> str | None:
-    """Returns the Flow ID of the most recent root timeline."""
+    """Returns the Flow ID of the most recent root timeline that is not stale.
+
+    Returns:
+      The Flow ID of the most recent timeline that is not older than the
+        staleness threshold.
+    """
     flows = self._grr_client.ListFlows()
     latest_timeline = None
     latest_timestamp = (time.time() - _STALE_TIMELINE_THRESHOLD.total_seconds()) * 1000000

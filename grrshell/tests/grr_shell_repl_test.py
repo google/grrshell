@@ -435,6 +435,46 @@ class GRRShellREPLTest(parameterized.TestCase):
       self.shell.RunShell()
       mock_detail.assert_called_once_with('flowid')
 
+  @parameterized.named_parameters(
+      ('short_only', 'help ls', grr_shell_repl._LS_HELP.short),
+      ('long_check_short', 'help find', grr_shell_repl._FIND_HELP.short),
+      ('long_check_long', 'help find', grr_shell_repl._FIND_HELP_LONG),
+      ('invalid', 'help foobar', 'Unknown command'),
+  )
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_extended_help(self, in_text, expected, mock_prompt):
+    """Tests fetching extended help text for a command."""
+    mock_prompt.side_effect = [in_text, EOFError]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.shell.RunShell()
+
+      self.assertIn(expected, buf.getvalue())
+
+  @parameterized.named_parameters(
+      ('help', 'help one two', grr_shell_repl._HELP_HELP.short),
+      ('ls', 'ls one two', grr_shell_repl._LS_HELP.short),
+      ('cd', 'cd one two', grr_shell_repl._CD_HELP.short),
+      ('refresh', 'refresh one two', grr_shell_repl._REFRESH_HELP.short),
+      ('collect', 'collect', grr_shell_repl._COLLECT_HELP.short),
+      ('find_short', 'find', grr_shell_repl._FIND_HELP.short),
+      ('find_long', 'find one two three', grr_shell_repl._FIND_HELP.short),
+      ('artefact', 'artefact', grr_shell_repl._ARTEFACT_HELP.short),
+      ('info_flags', 'info --ads --offline', grr_shell_repl._INFO_HELP.short),
+      ('info_count', 'info', grr_shell_repl._INFO_HELP.short),
+      ('resume', 'resume', grr_shell_repl._RESUME_HELP.short),
+      ('detail', 'detail', grr_shell_repl._DETAIL_HELP.short)
+  )
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_malformed_command(self, in_text, expected, mock_prompt):
+    """Tests output when command syntax is incorrect."""
+    mock_prompt.side_effect = [in_text, EOFError]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.shell.RunShell()
+
+      self.assertIn(expected, buf.getvalue())
+
 
 class GRRShellREPLTestWindows(parameterized.TestCase):
   """Windows specific unit tests for the Grr Shell REPL driver."""
@@ -539,6 +579,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
                      'artefact', 'clear', 'resume', 'detail']),
       ('find_space_only', 'find ', []),
       ('hash_space_only', 'hash ', ['..', 'root/', 'odd/', 'root_file']),
+      ('help_c', 'help c', ['cd', 'clear', 'collect'], -1),
       ('info_space_only', 'info ', ['..', 'root/', 'odd/', 'root_file']),
       ('ls_bare', 'ls', ['ls'], -2),
       ('ls_r', 'ls r', ['root/', 'root_file'], -1),

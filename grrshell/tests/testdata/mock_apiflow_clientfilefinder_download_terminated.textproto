@@ -1,8 +1,14 @@
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERTERMINATEDFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/grr.FileFinderArgs"
-  value: "\n\014/remote/path\020\0002\002\010\002"
+  [type.googleapis.com/grr.FileFinderArgs] {
+    action: {
+      action_type: DOWNLOAD
+    }
+    paths: [
+      "/remote/path"
+    ]
+  }
 }
 state: TERMINATED
 flow_id: "CLIENTFILEFINDERTERMINATEDFLOWID"

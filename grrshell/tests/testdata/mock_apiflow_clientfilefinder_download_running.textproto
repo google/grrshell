@@ -1,8 +1,14 @@
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERRUNNINGFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/grr.FileFinderArgs"
-  value: "\n\014/remote/path\020\0002\002\010\002"
+  [type.googleapis.com/grr.FileFinderArgs] {
+    action: {
+      action_type: DOWNLOAD
+    }
+    paths: [
+      "/remote/path"
+    ]
+  }
 }
 state: RUNNING
 flow_id: "CLIENTFILEFINDERRUNNINGFLOWID"

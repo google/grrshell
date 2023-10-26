@@ -1,8 +1,13 @@
 urn: "aff4:/C.0000000000000001/GETFILERUNNINGFLOWID"
 name: "GetFile"
 args {
-  type_url: "type.googleapis.com/grr.GetFileArgs"
-  value: "\nF\010\005\0221C:/Users/username/Downloads/Firefox Installer.exeZ\017Zone.Identifier"
+  [type.googleapis.com/grr.GetFileArgs] {
+    pathspec: {
+      stream_name: "Zone.Identifier"
+      path: "C:/Users/username/Downloads/Firefox Installer.exe"
+      pathtype: NTFS
+    }
+  }
 }
 state: RUNNING
 flow_id: "GETFILERUNNINGFLOWID"

@@ -2,13 +2,17 @@
 
 ## TL;DR
 
-GRR Shell is an interactive command line utility used for navigating a remote
+GRRShell is an interactive command line utility used for navigating a remote
 client's Emulated Filesystem (EFS)[0], collecting files and launching artefact
 collection flows.
 
 [0] So named to disambiguate with the Virtual File System (VFS) in the GRR Web UI.
 
 ## Usage
+
+Important: Using GRRShell requires that you already have been granted access to
+a client to launch flows. GRRShell does not have functionality to request access
+to a remote client, you will need to do this through the GRR web UI.
 
 Run `grrshell` as follows:
 
@@ -22,7 +26,7 @@ If `command` is not provided, `shell` is assumed.
 
 ### `shell`
 
-The primary function of GRR Shell is the interactive shell, launched by this
+The primary function of GRRShell is the interactive shell, launched by this
 command. The shell uses the results of a TimelineFlow to populate an in-memory
 representation of the remote filesystem, referred to as the EFS. When launching,
 a Timeline is selected in the following precedence:
@@ -30,6 +34,9 @@ a Timeline is selected in the following precedence:
 1.  A Timeline flow ID that is specified by the operator with the `--initial-timline` flag
 2.  A Timeline flow which completed successfully on the client within the last 3 hours
 3.  A new Timeline flow is launched
+
+Note: Windows machines only have `C:/` collected by default. To collect other
+volumes, use `refresh D:/` (for example.)
 
 Based on the need for a Timeline flow **it can take a few minutes for the shell
 to become usable, and #3 will only work if the client is online.**
@@ -42,6 +49,7 @@ Command options:
 *   `--client` - The remote client. Supports FQDNs (eg. `ramoj.domain.com`) or GRR Client IDs (`C.abcdef0123456789`)
 *   `--initial-timeline` - [Optional] Specify an existing timeline flow ID forthe host (eg, `A1B2C3D4E5F6A1B2`).
 *   `--max-file-size` - [Optional] Specify a max file size for file collections. If not specified, the GRR default of `500MB` is used.
+*   `--no-initial-timeline` Start without collecting a timeline from the client. Mostly used for debugging.
 
 Once launched, a prompt similar to the below will be presented:
 
@@ -64,19 +72,25 @@ similarly to `Last Seen`).[1]
 The following shell commands are supported. `[]` params are optional, `<>` are
 required.
 
-*   `help` - Display help text (also `h` and `?`.)
+*   `help` - Display help text (also `h` and `?`.) Display extended help for a
+    command with `help <command>`.
 *   `pwd` - Print the current working directory.
 *   `ls [path]` - List entries in the current working directory. `[path]` is
     optional, `./` is assumed if not specified. Wildcards `*` are supported in
-    the final path component.
+    the final path component. Default sort order is alphabetical with
+    directories first. Flags:
+    *   `-S` Sort by file size
+    *   `-t` Sort by modification time
+    *   `-r` Reverse sort order
 *   `cd <path>` - Change working directory.
 *   `info <path>` - Collect information for a file (also `hash <path>`). This is
     performed by a synchronous `ClientFileFinder` flow with the `HASH` option.
     Will display MAC times, permission info, and hashes, among other things.
-    Supports `ClientFileFinder` wildcards. Specifying `--ads` will also attempt
-    collection of a `Zone.Identifier` alternate data stream (though this is not
-    supported with wildcard paths as the flow used is `GetFile`).
-*   `collect <path>` - Collect remote files. This is performed in the background
+    Supports `ClientFileFinder` wildcards. Optional flags:
+    *   `--ads` - Attempt `Zone.Identifier` alternate data stream collection
+        (not supported with wildcards; Windows only).
+    *   `--offline` - Use the cached TimelineFlow info rather than launching a
+        flow.*   `collect <path>` - Collect remote files. This is performed in the background
     by an asynchronous `ClientFileFinder` flow, and so supports
     `ClientFileFinder` path wildcards. Files are downloaded to the local current
     working directory, named for the client ID, and remote directory structure
@@ -109,9 +123,6 @@ such value is used:
 
 *   `max-file-size` Specify a max file size for file collections. If not
     specified, the GRR default of `500MB` is used.
-
-Note: Windows machines only have `C:/` collected by default. To collect other
-volumes, use `refresh D:/` (for example.)
 
 ### `collect`
 

@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,7 +45,7 @@ from grrshell.lib import grr_shell_client
 # generates complaints that the following flags aren't defined. So, define them for absl.
 flags.DEFINE_string('s', '', '')
 flags.DEFINE_string('p', '', '')
-app._run_init(sys.argv, app.parse_flags_with_usage)
+app._run_init(sys.argv, app.parse_flags_with_usage)  # pylint: disable=protected-access
 
 
 _TEST_GRR_URL = 'grr-url'
@@ -54,6 +54,7 @@ _TEST_GRR_PASS = 'pass'
 _TEST_CLIENT_FQDN = 'host.domain.com'
 _TEST_CLIENT_GRR_ID = 'C.0000000000000001'
 
+# pylint: disable=consider-using-with,line-too-long
 _MOCK_DARWIN_CLIENT_PROTO_FILE = 'grrshell/tests/testdata/mock_client_darwin.textproto'
 _MOCK_DARWIN_CLIENT = client.Client(
     data=text_format.Parse(open(_MOCK_DARWIN_CLIENT_PROTO_FILE, 'rb').read().decode('utf-8'), client_pb2.ApiClient()),
@@ -67,13 +68,17 @@ _MOCK_WINDOWS_CLIENT = client.Client(
     data=text_format.Parse(open(_MOCK_WINDOWS_CLIENT_PROTO_FILE, 'rb').read().decode('utf-8'), client_pb2.ApiClient()),
     context=True)
 
-_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_running.textproto'
-_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING = flow.Flow(
-    data=text_format.Parse(open(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_allfile_running.textproto'
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
     context=mock.MagicMock())
-_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_terminated.textproto'
-_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED = flow.Flow(
-    data=text_format.Parse(open(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_allfile_terminated.textproto'
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_windowsregkey_running.textproto'
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
     context=mock.MagicMock())
 
 _MOCK_APIFLOW_CFF_HASH_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_clientfilefinder_hash_running.textproto'
@@ -170,7 +175,8 @@ _MOCK_APIFLOW_TIMELINE_ERROR_NOMESSAGE = flow.Flow(
     context=mock.MagicMock())
 
 _MOCK_APIFLOW_LISTFLOWS_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_listflows.textproto'
-_MOCK_APIFLOW_LISTFLOWS_FLOWS = text_format.Parse(open(_MOCK_APIFLOW_LISTFLOWS_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiListFlowsResult())
+_MOCK_APIFLOW_LISTFLOWS_FLOWS = text_format.Parse(
+    open(_MOCK_APIFLOW_LISTFLOWS_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiListFlowsResult())
 _MOCK_APIFLOW_LISTFLOWS = [flow.Flow(data=item, context=mock.MagicMock())
                            for item in _MOCK_APIFLOW_LISTFLOWS_FLOWS.items]
 
@@ -195,8 +201,7 @@ _EXPECTED_HASH_LINUX_RESULT = """/remote/file
     st_flags_linux: 15
     md5:            6d6435
     sha1:           73686131
-    sha256:         736861323536
-"""
+    sha256:         736861323536"""
 
 _MOCK_HASH_WINDOWS_PROTO_FILE = 'grrshell/tests/testdata/mock_hash_windows.textproto'
 _MOCK_HASH_WINDOWS_ENTRY = flow.FlowResult(
@@ -219,8 +224,7 @@ _EXPECTED_HASH_WINDOWS_RESULT = """C:/Users/username/Downloads/Firefox Installer
     st_flags_linux: 0
     md5:            6d6435
     sha1:           73686131
-    sha256:         736861323536
-"""
+    sha256:         736861323536"""
 
 _MOCK_HASH_WINDOWS_WITH_ADS_PROTO_FILE = 'grrshell/tests/testdata/mock_hash_windows_ads.textproto'
 _MOCK_HASH_WINDOWS_WITH_ADS_ENTRY = flow.FlowResult(
@@ -248,15 +252,20 @@ _EXPECTED_HASH_WINDOWS_WITH_ADS_RESULT = """C:/Users/username/Downloads/Firefox 
         [ZoneTransfer]
         ZoneId=3
         ReferrerUrl=https://www.mozilla.org/
-        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe
-"""
+        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe"""
 
 _EXPECTED_ZONE_IDENTIFIER_RESULT = """    Zone.Identifier:
         [ZoneTransfer]
         ZoneId=3
         ReferrerUrl=https://www.mozilla.org/
-        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe
-"""
+        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe"""
+
+_MOCK_WINDOWS_ARTEFACT_REGVALUE_PROTO_FILE = 'grrshell/tests/testdata/mock_windows_registry_result.textproto'
+_MOCK_WINDOWS_ARTEFACT_REGVALUE = flow.FlowResult(
+    data=text_format.Parse(open(_MOCK_WINDOWS_ARTEFACT_REGVALUE_PROTO_FILE, 'rb').read().decode('utf-8'),flow_pb2.ApiFlowResult()))
+
+_EXPECTED_WINDOWS_REGVALUE_RESULT = """    /HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Windows NT/CurrentVersion/InstallDate (REG_DWORD)
+        integer: 12345"""
 
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE = 'grrshell/tests/testdata/file_collect_darwin.zip'
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_DATA = open(_MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE, 'rb').read()
@@ -277,24 +286,28 @@ _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_DATA = open(_MOCK_ZIP_WINDOWS_GETFILE_ADS_EM
 
 _MAX_FILE_SIZE_1GB = 1024 * 1024 * 1024
 
-
 def _BuildMockArtifactDescriptors() -> list[artifact.Artifact]:
   """Builds the mock artifact descriptors list, used by ListArtifacts."""
   artifactdescriptor_proto_files = (
-      'grrshell/tests/testdata/mock_artifactdescriptor_all_one.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_all_two.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_darwin_one.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_darwin_two.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_linux_one.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_linux_two.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_windows_one.textproto',
-      'grrshell/tests/testdata/mock_artifactdescriptor_windows_two.textproto')
+      'grrshell/tests/testdata/mock_artifactdescriptor_all_artifactgroup.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_all_file.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_darwin_artifactfiles.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_darwin_grraction.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_linux_command.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_linux_path.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_mixed.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_windows_regkey.textproto',
+      'grrshell/tests/testdata/mock_artifactdescriptor_windows_regvalue.textproto')
   to_return: list[artifact.Artifact] = []
   for proto_file in artifactdescriptor_proto_files:
     to_return.append(artifact.Artifact(
         data=text_format.Parse(open(proto_file, 'rb').read().decode('utf-8'), artifact_pb2.ArtifactDescriptor()),
         context=mock.MagicMock()))
   return to_return
+
+
+# pylint: enable=consider-using-with,line-too-long
+# pylint: disable=protected-access
 
 
 class GrrShellClientLinuxTest(parameterized.TestCase):
@@ -304,7 +317,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
 
@@ -313,6 +326,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     self.mock_grr_api.Client.return_value.client_id = _TEST_CLIENT_GRR_ID
     self.mock_grr_api.Client.return_value.Get.return_value = _MOCK_LINUX_CLIENT
     self.mock_grr_api.SearchClients.return_value = [_MOCK_LINUX_CLIENT]
+    self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
     self.client = grr_shell_client.GRRShellClient(
         _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
@@ -326,7 +340,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     self.assertEqual(self.client.GetOS(), 'Linux')
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def test_NoApproval(self, mock_InitHttp):
+  def test_NoApproval(self, mock_InitHttp):  # pylint: disable=invalid-name
     """Tests no approval for the client is correctly handled."""
     mock_grr_api = mock.Mock()
     mock_InitHttp.return_value = mock_grr_api
@@ -341,11 +355,11 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   def test_Cleanup(self):
     """Tests destructor."""
     with mock.patch.object(self.client._collection_threads, 'shutdown') as mock_shutdown:
-      self.client.__del__()  # __del__ instead of del because of GC
+      self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
       mock_shutdown.assert_called_once()
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def test_InvalidClient(self, mock_InitHttp):
+  def test_InvalidClient(self, mock_InitHttp):  # pylint: disable=invalid-name
     """Tests an invalid client correctly fails."""
     mock_InitHttp.return_value = self.mock_grr_api
     self.mock_grr_api.SearchClients.return_value = []
@@ -514,26 +528,25 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertTrue(os.path.exists(os.path.join(local_path, 'home', 'ramoj', 'tmp', 'derp')))  # sample zip contents
 
   @mock.patch.object(flow.Flow, 'Get')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'WaitUntilDone')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'ListResults')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'GetFilesArchive')
-  def test_CollectArtifact(self,
-                           mock_get_files_archive,
-                           mock_list_results,
-                           mock_wait_until_done,
-                           mock_get):
-    """Tests the CollectArtifact method."""
-    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED]
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
+  def test_ScheduleAndDownloadArtefact(self,
+                                       mock_get_files_archive,
+                                       mock_list_results,
+                                       mock_wait_until_done,
+                                       mock_get):
+    """Tests the ScheduleAndDownloadArtefact method."""
+    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED]
     mock_list_results.return_value = [_MOCK_HASH_LINUX_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_LINUX_ARTIFACTCOLLECTORFLOW_DATA]
 
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs') as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow') as mock_create_flow):
-      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING
+      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
 
       local_path = os.path.join(self.create_tempdir(), 'local_path')
-      self.client.CollectArtifact('artifact_name', local_path)
-
+      self.client.ScheduleAndDownloadArtefact('artifact_name', local_path)
       mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
       self.assertEqual(mock_create_flow_args.return_value.max_file_size, _MAX_FILE_SIZE_1GB)
       self.assertFalse(mock_create_flow_args.return_value.use_raw_filesystem_access)
@@ -606,9 +619,9 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   @mock.patch.object(futures.Future, 'exception', return_value=False)
   @mock.patch.object(futures.Future, 'running')
   @mock.patch.object(flow.Flow, 'Get')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'WaitUntilDone')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'ListResults')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'GetFilesArchive')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
   def test_CollectArtifactInBackground(self,
                                        mock_get_files_archive,
                                        mock_list_results,
@@ -617,14 +630,14 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
                                        mock_running,
                                        _):
     """Tests background collection of artifacts."""
-    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, _MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED]
+    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED]
     mock_running.side_effect = [True, True, True, True, False, False]
     mock_list_results.return_value = [_MOCK_HASH_LINUX_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_LINUX_ARTIFACTCOLLECTORFLOW_DATA]
 
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs') as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow') as mock_create_flow):
-      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING
+      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
       local_path = os.path.join(self.create_tempdir(), 'local_path')
 
       running, total = self.client.GetRunningFlowCount()
@@ -633,25 +646,25 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       actual_states = self.client.GetBackgroundFlowsState()
       self.assertEqual(actual_states, 'No launched flows')
 
-      self.client.CollectArtifactInBackground('artifact_name', local_path)
+      self.client.CollectArtefact('AllOS_File', local_path)
 
       running, total = self.client.GetRunningFlowCount()
       self.assertEqual(running, 1)
       self.assertEqual(total, 1)
       actual_states = self.client.GetBackgroundFlowsState()
-      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID ArtifactCollectorFlow artifact_name RUNNING')
+      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID ArtifactCollectorFlow AllOS_File RUNNING')
 
       running, total = self.client.GetRunningFlowCount()
       self.assertEqual(running, 1)
       self.assertEqual(total, 1)
       actual_states = self.client.GetBackgroundFlowsState()
-      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow artifact_name DOWNLOADING')
+      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow AllOS_File DOWNLOADING')
 
       running, total = self.client.GetRunningFlowCount()
       self.assertEqual(running, 0)
       self.assertEqual(total, 1)
       actual_states = self.client.GetBackgroundFlowsState()
-      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow artifact_name COMPLETE')
+      self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow AllOS_File COMPLETE')
 
       mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
       mock_create_flow.assert_called_once_with(name='ArtifactCollectorFlow', args=mock_create_flow_args.return_value)
@@ -665,7 +678,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
 
   def test_CollectFilesBadDirectory(self):
     """Tests collecting files fails when an invalid local path is used."""
-    path = self.create_tempfile().full_path
+    path = self.create_tempfile().full_path  # pylint: disable=no-member
 
     with self.assertRaisesRegex(FileExistsError, path):
       self.client.CollectFiles('/remote/path', path)
@@ -725,7 +738,9 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
-    self.assertCountEqual(self.client.GetSupportedArtifacts(), ['LinuxOne', 'LinuxTwo', 'AllOne', 'AllTwo'])
+    self.client._RetrieveSupportedArtefacts()
+    self.assertCountEqual(self.client.GetSupportedArtefactNames(),
+                          ['AllOS_File', 'AllOS_ArtifactGroup', 'Linux_Command', 'Linux_Path', 'Mixed'])
 
   @mock.patch.object(futures.Future, 'exception', return_value=False)
   @mock.patch.object(futures.Future, 'running')
@@ -754,7 +769,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client.CollectFilesInBackground('/remote/path', local_path)
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC
+        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
 
         self.assertIn(
             'Waiting for collection threads CLIENTFILEFINDERRUNNINGFLOWID to finish (<CTRL+C> to force exit)\n',
@@ -789,36 +804,36 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client._collection_threads.shutdown()
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC
+        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
 
         self.assertIn('CLIENTFILEFINDERRUNNINGFLOWID - Test exception', buf.getvalue())
 
-  @mock.patch.object(flow.Flow, 'Get')
-  def test_ListAllFlows(self, mock_get):
+  def test_ListAllFlows(self):
     """Tests the ListAllFlows method."""
-    mock_get.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
-                            _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
-                            _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
-                            _MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED,
-                            _MOCK_APIFLOW_GETFILE_RUNNING,
-                            _MOCK_APIFLOW_INTERROGATE_RUNNING,
-                            _MOCK_APIFLOW_TIMELINE_RUNNING]
-
-    with (mock.patch.object(self.client._grr_client, 'ListFlows') as mock_listflows):
+    with (mock.patch.object(self.client._grr_client, 'ListFlows'
+                            ) as mock_listflows,
+          mock.patch.object(self.client._flow_monitor._grr_client, 'Flow'
+                            ) as mock_monitor_flow):
       mock_listflows.return_value = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
                                      _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
-                                     _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING,
-                                     _MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED,
+                                     _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING,
+                                     _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED,
                                      _MOCK_APIFLOW_GETFILE_RUNNING,
                                      _MOCK_APIFLOW_INTERROGATE_RUNNING,
                                      _MOCK_APIFLOW_TIMELINE_RUNNING]
+      mock_monitor_flow.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
+                                       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING,
+                                       _MOCK_APIFLOW_GETFILE_RUNNING,
+                                       _MOCK_APIFLOW_INTERROGATE_RUNNING,
+                                       _MOCK_APIFLOW_TIMELINE_RUNNING]
 
+      self.client._flow_monitor.StartMonitor()
       result = self.client.ListAllFlows(10)
 
       self.assertIn('\tCLIENTFILEFINDERRUNNINGFLOWID 1970-01-01T00:00:05Z ClientFileFinder DOWNLOAD /remote/path RUNNING', result)
       self.assertIn('\tCLIENTFILEFINDERTERMINATEDFLOWID 1970-01-01T00:00:06Z ClientFileFinder DOWNLOAD /remote/path TERMINATED', result)
-      self.assertIn('\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID 1970-01-01T00:00:08Z ArtifactCollectorFlow artifact_name RUNNING', result)
-      self.assertIn('\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID 1970-01-01T00:00:09Z ArtifactCollectorFlow artifact_name TERMINATED', result)
+      self.assertIn('\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID 1970-01-01T00:00:08Z ArtifactCollectorFlow AllOS_File RUNNING', result)
+      self.assertIn('\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID 1970-01-01T00:00:09Z ArtifactCollectorFlow AllOS_File TERMINATED', result)
       self.assertIn(
         '\tGETFILERUNNINGFLOWID 1970-01-01T00:00:07Z GetFile C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier RUNNING',
         result)
@@ -836,9 +851,14 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the Detail method."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = mock_flow
 
-    result = self.client.Detail('CLIENTFILEFINDERTERMINATEDFLOWID')
+    result = self.client.FlowDetail(mock_flow.flow_id)
     self.assertEqual(result, expected_detail)
 
+  def test_DetermineSourceForArtefact(self):
+    """Tests determining the source type for a mixed type Artefact."""
+    result = self.client._DetermineSourceForArtefact('Mixed')
+
+    self.assertEqual(result, artifact_pb2.ArtifactSource.SourceType.FILE)
 
 class GrrShellClientWindowsTest(parameterized.TestCase):
   """Windows specific tests for the GRR Shell Client class."""
@@ -847,14 +867,16 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
     self.mock_grr_api = mock.Mock()
     mock_InitHttp.return_value = self.mock_grr_api
     self.mock_grr_api.Client.return_value.client_id = _TEST_CLIENT_GRR_ID
     self.mock_grr_api.Client.return_value.Get.return_value = _MOCK_WINDOWS_CLIENT
+    self.mock_grr_api.Client.return_value.ListFlows.return_value = _MOCK_APIFLOW_LISTFLOWS
     self.mock_grr_api.SearchClients.return_value = [_MOCK_WINDOWS_CLIENT]
+    self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
     self.client = grr_shell_client.GRRShellClient(
         _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
@@ -1075,25 +1097,25 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           os.path.join(local_path, 'volume', 'Users', 'username', 'Downloads', 'Firefox Installer.exe')))
 
   @mock.patch.object(flow.Flow, 'Get')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'WaitUntilDone')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'ListResults')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'GetFilesArchive')
-  def test_CollectArtifact(self,
-                           mock_get_files_archive,
-                           mock_list_results,
-                           mock_wait_until_done,
-                           mock_get):
-    """Tests the CollectArtifact method for windows."""
-    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED]
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
+  def test_ScheduleAndDownloadArtefact(self,
+                                       mock_get_files_archive,
+                                       mock_list_results,
+                                       mock_wait_until_done,
+                                       mock_get):
+    """Tests the ScheduleAndDownloadArtefact method for windows."""
+    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED]
     mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_WINDOWS_ARTIFACTCOLLECTORFLOW_DATA]
 
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs') as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow') as mock_create_flow):
-      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING
+      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
 
       local_path = os.path.join(self.create_tempdir(), 'local_path')
-      self.client.CollectArtifact('artifact_name', local_path)
+      self.client.ScheduleAndDownloadArtefact('artifact_name', local_path)
 
       mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
       self.assertEqual(mock_create_flow_args.return_value.max_file_size, _MAX_FILE_SIZE_1GB)
@@ -1104,6 +1126,18 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
 
       self.assertTrue(os.path.exists(
           os.path.join(local_path, 'volume', 'Users', 'username', 'Downloads', 'Firefox Installer.exe')))
+
+  def test_CollectArtefactSynchronous(self):
+    """Tests collecting a synchronous artefact."""
+    with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs') as mock_create_flow_args,
+          mock.patch.object(self.client._grr_client, 'CreateFlow') as mock_create_flow):
+      mock_create_flow.return_value.ListResults.return_value = [_MOCK_WINDOWS_ARTEFACT_REGVALUE]
+
+      results = '\n'.join(self.client.CollectArtefact('Windows_RegKey', './'))
+
+      mock_create_flow_args.assert_called_once()
+      mock_create_flow.return_value.WaitUntilDone.assert_called_once()
+      self.assertCountEqual(results, _EXPECTED_WINDOWS_REGVALUE_RESULT)
 
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'ListResults')
@@ -1194,9 +1228,9 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
   @mock.patch.object(futures.Future, 'exception', return_value=False)
   @mock.patch.object(futures.Future, 'running')
   @mock.patch.object(flow.Flow, 'Get')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'WaitUntilDone')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'ListResults')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'GetFilesArchive')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
   def test_Resume_ArtifactCollectorFlow(self,
                                         mock_get_files_archive,
                                         mock_list_results,
@@ -1205,9 +1239,9 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
                                         mock_running,
                                         _):
     """Tests resuming an ArtifactCollectorFlow flow."""
-    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
-        _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING)
-    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, _MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED]
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
+    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING,
+                            _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED]
     mock_running.side_effect = [True, True, True, True, False, False]
     mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_WINDOWS_ARTIFACTCOLLECTORFLOW_DATA]
@@ -1226,25 +1260,39 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     self.assertEqual(running, 1)
     self.assertEqual(total, 1)
     actual_states = self.client.GetBackgroundFlowsState()
-    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID ArtifactCollectorFlow artifact_name RUNNING')
+    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID ArtifactCollectorFlow AllOS_File RUNNING')
 
     running, total = self.client.GetRunningFlowCount()
     self.assertEqual(running, 1)
     self.assertEqual(total, 1)
     actual_states = self.client.GetBackgroundFlowsState()
-    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow artifact_name DOWNLOADING')
+    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow AllOS_File DOWNLOADING')
 
     running, total = self.client.GetRunningFlowCount()
     self.assertEqual(running, 0)
     self.assertEqual(total, 1)
     actual_states = self.client.GetBackgroundFlowsState()
-    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow artifact_name COMPLETE')
+    self.assertEqual(actual_states, '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID ArtifactCollectorFlow AllOS_File COMPLETE')
 
     self.client._collection_threads.shutdown()
 
     mock_wait_until_done.assert_called_once()
     self.assertTrue(os.path.exists(
         os.path.join(local_path, 'volume', 'Users', 'username', 'Downloads', 'Firefox Installer.exe')))
+
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'ListResults')
+  def test_Resume_SynchronousArtefact(self,
+                                      mock_list_results,
+                                      mock_wait_until_done):
+    """Tests resumine a synchronous ArtifactColector flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING
+    mock_list_results.return_value = [_MOCK_WINDOWS_ARTEFACT_REGVALUE]
+
+    results = '\n'.join(self.client.ResumeFlow('ARTIFACTCOLLECTORFLOWRUNNINGFLOWID'))
+    mock_wait_until_done.assert_called_once()
+
+    self.assertEqual(results, _EXPECTED_WINDOWS_REGVALUE_RESULT)
 
   def test_Resume_InvalidFlow(self):
     """Tests attempting to resume an unsupported flow."""
@@ -1258,7 +1306,9 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
-    self.assertCountEqual(self.client.GetSupportedArtifacts(), ['WindowsOne', 'WindowsTwo', 'AllOne', 'AllTwo'])
+    self.client._RetrieveSupportedArtefacts()
+    self.assertCountEqual(self.client.GetSupportedArtefactNames(),
+                          ['AllOS_File', 'AllOS_ArtifactGroup', 'Windows_RegKey', 'Windows_RegValue', 'Mixed'])
 
   @parameterized.named_parameters(
       ('root', '/', b'/'),
@@ -1278,6 +1328,11 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
       mock_create_flow.return_value.WaitUntilDone.assert_called_once()
       mock_create_flow.return_value.GetCollectedTimelineBody.assert_called_once()
 
+  def test_DetermineSourceForArtefact(self):
+    """Tests determining the source type for a mixed type Artefact."""
+    result = self.client._DetermineSourceForArtefact('Mixed')
+
+    self.assertEqual(result, artifact_pb2.ArtifactSource.SourceType.REGISTRY_VALUE)
 
 class GrrShellClientDarwinTest(parameterized.TestCase):
   """Dawin/MacOS specific tests for the GRR Shell Client class."""
@@ -1286,7 +1341,7 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
   client: grr_shell_client.GRRShellClient
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
-  def setUp(self, mock_InitHttp):
+  def setUp(self, mock_InitHttp):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
 
@@ -1294,7 +1349,9 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
     mock_InitHttp.return_value = self.mock_grr_api
     self.mock_grr_api.Client.return_value.client_id = _TEST_CLIENT_GRR_ID
     self.mock_grr_api.Client.return_value.Get.return_value = _MOCK_DARWIN_CLIENT
+    self.mock_grr_api.Client.return_value.ListFlows.return_value = _MOCK_APIFLOW_LISTFLOWS
     self.mock_grr_api.SearchClients.return_value = [_MOCK_DARWIN_CLIENT]
+    self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
     self.client = grr_shell_client.GRRShellClient(
         _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
@@ -1332,25 +1389,25 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
       self.assertTrue(os.path.exists(os.path.join(local_path, 'Users', 'username', 'file')))  # sample zip contents
 
   @mock.patch.object(flow.Flow, 'Get')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'WaitUntilDone')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'ListResults')
-  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING, 'GetFilesArchive')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
   def test_CollectArtifact(self,
                            mock_get_files_archive,
                            mock_list_results,
                            mock_wait_until_done,
                            mock_get):
     """Tests the CollectArtifact method."""
-    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_TERMINATED]
+    mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_TERMINATED]
     mock_list_results.return_value = [_MOCK_HASH_LINUX_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_DARWIN_ARTIFACTCOLLECTORFLOW_DATA]
 
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs') as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow') as mock_create_flow):
-      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_RUNNING
+      mock_create_flow.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
 
       local_path = os.path.join(self.create_tempdir(), 'local_path')
-      self.client.CollectArtifact('artifact_name', local_path)
+      self.client.ScheduleAndDownloadArtefact('artifact_name', local_path)
 
       mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
       self.assertEqual(mock_create_flow_args.return_value.max_file_size, _MAX_FILE_SIZE_1GB)
@@ -1365,7 +1422,15 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
     """Tests the GetSupportedArtifacts method."""
     self.mock_grr_api.ListArtifacts.return_value = _BuildMockArtifactDescriptors()
 
-    self.assertCountEqual(self.client.GetSupportedArtifacts(), ['DarwinOne', 'DarwinTwo', 'AllOne', 'AllTwo'])
+    self.client._RetrieveSupportedArtefacts()
+    self.assertCountEqual(self.client.GetSupportedArtefactNames(),
+                          ['AllOS_File', 'AllOS_ArtifactGroup', 'Darwin_GRRClientAction', 'Darwin_ArtifactFiles', 'Mixed'])
+
+  def test_DetermineSourceForArtefact(self):
+    """Tests determining the source type for a mixed type Artefact."""
+    result = self.client._DetermineSourceForArtefact('Mixed')
+
+    self.assertEqual(result, artifact_pb2.ArtifactSource.SourceType.FILE)
 
 
 if __name__ == '__main__':

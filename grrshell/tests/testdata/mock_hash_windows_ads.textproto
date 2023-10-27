@@ -1,3 +1,5 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlowResult
 payload: {
   [type.googleapis.com/grr.StatEntry] {
     st_mode: 33152  # -rw-------
@@ -10,7 +12,7 @@ payload: {
     st_ctime: 10
     pathspec {
       pathtype: OS
-      path: "/volume"
+      path: "/\\\\?\\Volume{f8231dbf-cb37-4aeb-abf9-6f1626a5d703}"
       mount_point: "C:"
       nested_path {
         pathtype: NTFS

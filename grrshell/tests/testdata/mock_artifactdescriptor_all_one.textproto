@@ -1,6 +1,0 @@
-artifact: {
-  name: "AllOne"
-  supported_os: "Windows"
-  supported_os: "Linux"
-  supported_os: "Darwin"
-}

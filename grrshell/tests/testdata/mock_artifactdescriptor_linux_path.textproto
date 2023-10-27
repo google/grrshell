@@ -1,0 +1,9 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/artifact.proto
+# proto-message: ArtifactDescriptor
+artifact: {
+  name: "Linux_Path"
+  supported_os: "Linux"
+  sources: {
+    type: PATH
+  }
+}

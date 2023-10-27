@@ -1,0 +1,17 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/artifact.proto
+# proto-message: ArtifactDescriptor
+artifact: {
+  name: "Mixed"
+  supported_os: "Darwin"
+  supported_os: "Windows"
+  supported_os: "Linux"
+  sources: {
+    type: REGISTRY_VALUE
+    supported_os: "Windows"
+  }
+  sources: {
+    type: FILE
+    supported_os: "Linux"
+    supported_os: "Darwin"
+  }
+}

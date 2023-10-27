@@ -1,7 +1,9 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/client.proto
+# proto-message: ApiClient
 urn: "aff4:/C.0000000000000001"
 os_info {
   system: "Windows"
-  fqdn: "host.domain.com"
+  fqdn: "host.corp.google.com"
   install_date: 1644801578000000
 }
 first_seen_at: 1658876722840519

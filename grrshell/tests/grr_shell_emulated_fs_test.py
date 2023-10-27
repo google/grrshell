@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,31 @@ _SAMPLE_TIMELINE_LINUX_OVERLAY = 'grrshell/tests/testdata/sample_timeline_linux_
 _SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 _SAMPLE_TIMELINE_WINDOWS_D_DRIVE = 'grrshell/tests/testdata/sample_timeline_windows_d_drive'
 
+_EXPECTED_OFFLINE_INFO_FILE = """/root/.bashrc
+    mode:   -rw-------
+    inode:  6815746
+    uid:    0
+    gid:    0
+    size:   571 (571 Bytes)
+    atime:  1644801907.2463605 - 2022-02-14T01:25:07Z
+    mtime:  1618084800.0 - 2021-04-10T20:00:00Z
+    ctime:  1644801907.2463605 - 2022-02-14T01:25:07Z
+    crtime: 0.0 - 1970-01-01T00:00:00Z"""
+_EXPECTED_OFFLINE_INFO_DIRECTORY = """/root
+    mode:   drwx--S---
+    inode:  6815745
+    uid:    0
+    gid:    0
+    size:   4096 (4.0 KiB)
+    atime:  1683360703.224626 - 2023-05-06T08:11:43Z
+    mtime:  1679618652.750104 - 2023-03-24T00:44:12Z
+    ctime:  1679618652.750104 - 2023-03-24T00:44:12Z
+    crtime: 0.0 - 1970-01-01T00:00:00Z"""
+
+
+# pytype: disable=attribute-error
+# pylint: disable=protected-access
+
 
 class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
   """Unit tests for the Grr Shell Emulated FS class with a linux FS."""
@@ -34,7 +59,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_LINUX, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
 
   def test_ParseTimelineFlow(self):
@@ -47,7 +72,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
   def test_AddRowToEmulatedFS(self):
     """Tests the AddRowToEmulatedFS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
-    timeline_entry = ('0|/root/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0')
+    timeline_entry = '0|/root/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0'
     row = grr_shell_emulated_fs._TimelineRow(*timeline_entry.split(sep='|'))
 
     self.assertNotIn('file', self.emulated_fs._root.children['root'].children)
@@ -99,22 +124,22 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     self.assertEqual(result, expected_resuslt)
 
   @parameterized.named_parameters(
-      ('no_path', None, ['.', 'root', 'odd', 'root_file']),
-      ('root_dir', '/root', ['.', '.bashrc', '.profile', '.pki', '.cache', '.local', '.wget-hsts', '.ssh', '.lesshst',
-                             '.augeas', 'dead.letter', 'xorg.conf.new', 'directory with spaces']),
+      ('no_path', None, ['.', 'odd', 'root', 'root_file']),
+      ('root_dir', '/root', ['.', '.augeas', '.cache', '.local', '.pki', '.ssh', 'directory with spaces', '.bashrc', '.lesshst', '.profile',
+                             '.wget-hsts', 'dead.letter', 'xorg.conf.new']),
       ('file', '/root/.bashrc', ['.bashrc']),
-      ('glob_raw', '*', ['.', 'root', 'odd', 'root_file']),
-      ('glob_root', '/*', ['.', 'root', 'odd', 'root_file']),
+      ('glob_raw', '*', ['.', 'odd', 'root', 'root_file']),
+      ('glob_root', '/*', ['.', 'odd', 'root', 'root_file']),
       ('glob_slash_ro', '/ro*', ['root', 'root_file']),
-      ('glob_subdir', '/root/*e*', ['.profile', '.cache', '.wget-hsts', '.lesshst', '.augeas', 'dead.letter',
-                                    'xorg.conf.new', 'directory with spaces'])
+      ('glob_subdir', '/root/*e*', ['.augeas', '.cache', 'directory with spaces', '.lesshst', '.profile', '.wget-hsts', 'dead.letter',
+                                    'xorg.conf.new'])
   )
   def test_LS(self, path: str | None, expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 
     results = [r.name for r in self.emulated_fs.Ls(path)]
-    self.assertCountEqual(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   def test_LSGlobbingError(self):
     """Tests LS with invalid globbing."""
@@ -174,6 +199,17 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     with self.assertRaisesRegex(expected_exception, base_dir):
       self.emulated_fs.Find(base_dir, needle)
 
+  @parameterized.named_parameters(
+      ('file', '/root/.bashrc', _EXPECTED_OFFLINE_INFO_FILE),
+      ('directory', '/root/', _EXPECTED_OFFLINE_INFO_DIRECTORY),
+      ('error', '/nonexistent', 'No such file or directory: /nonexistent'),
+  )
+  def test_OfflineFileInfo(self, path, expected_result):
+    """Tests OfflineFileInfo with an invalid path."""
+    self.emulated_fs.ParseTimelineFlow(self.timeline_data)
+    result = self.emulated_fs.OfflineFileInfo(path)
+    self.assertEqual(result, expected_result)
+
 
 class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
   """Unit tests for the Grr Shell Emulated FS class with a Windows FS."""
@@ -182,7 +218,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_WINDOWS, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
 
   def test_ParseTimelineFlow(self):
@@ -298,7 +334,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     self.assertFalse(self.emulated_fs.RemotePathExists('D:/directory/foobar'))
 
     with open(_SAMPLE_TIMELINE_WINDOWS_D_DRIVE, 'rb') as f:
-        second_timeline = f.read().decode('utf-8')
+      second_timeline = f.read().decode('utf-8')
 
     self.emulated_fs.ClearPath('D:/', 0)
     self.emulated_fs.ParseTimelineFlow(second_timeline)
@@ -314,7 +350,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_DARWIN, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Darwin')
 
   def test_ParseTimelineFlow(self):
@@ -327,7 +363,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
   def test_AddRowToEmulatedFS(self):
     """Tests the AddRowToEmulatedFS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
-    timeline_entry = ('0|/usr/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0')
+    timeline_entry = '0|/usr/file|7|-rwx------|6|5|4096|1683360700.01|1683360701.02|1683360702.03|0.0'
     row = grr_shell_emulated_fs._TimelineRow(*timeline_entry.split(sep='|'))
 
     self.assertNotIn('file', self.emulated_fs._root.children['usr'].children)
@@ -458,7 +494,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     with open(_SAMPLE_TIMELINE_LINUX, 'rb') as f:
-        self.timeline_data = f.read().decode('utf-8')
+      self.timeline_data = f.read().decode('utf-8')
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
     self.emulated_fs.Cd('/root/.local/share')
@@ -474,7 +510,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
     self.assertIn('.bashrc', self.emulated_fs._root.children['root'].children)
 
     with open(_SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb') as f:
-        overlay_data = f.read().decode('utf-8')
+      overlay_data = f.read().decode('utf-8')
 
     # Parse overlay.
     self.emulated_fs.ClearPath('/root/.local/share', 75)

@@ -157,7 +157,7 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
     if not all((_ARTEFACT.value, _LOCAL_PATH.value)):
       print(_USAGE)
       return
-    client.CollectArtifact(_ARTEFACT.value, _LOCAL_PATH.value)
+    client.ScheduleAndDownloadArtefact(_ARTEFACT.value, _LOCAL_PATH.value)
   else:
     print(f'Unrecognised command\n{_USAGE}')
 

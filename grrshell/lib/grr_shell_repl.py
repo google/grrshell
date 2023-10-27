@@ -156,7 +156,7 @@ class GRRShellREPL:
     """Runs the GRR Shell REPL."""
     completer = _GrrShellREPLPromptCompleter(self._emulated_fs, list(self._commands.keys()),
                                              [name for name in self._commands if self._commands[name].path_param],
-                                             self._grr_shell_client.GetSupportedArtifacts())
+                                             list(self._grr_shell_client.GetSupportedArtefactNames()))
     prompts = prompt_toolkit.PromptSession(completer=completer, style=_PROMPT_STYLE)
 
     try:
@@ -187,8 +187,8 @@ class GRRShellREPL:
     """
     commands = [
         _Command('?', self._PrintHelp, _HELP_HELP, is_alias=True),
-        _Command('artefact', self._Artifact, _ARTEFACT_HELP),
-        _Command('artifact', self._Artifact, _ARTEFACT_HELP, is_alias=True),
+        _Command('artefact', self._Artefact, _ARTEFACT_HELP),
+        _Command('artifact', self._Artefact, _ARTEFACT_HELP, is_alias=True),
         _Command('cd', self._Cd, _CD_HELP, path_param=True),
         _Command('clear', self._Clear, _CLEAR_HELP),
         _Command('collect', self._Collect, _COLLECT_HELP, path_param=True),
@@ -263,8 +263,7 @@ class GRRShellREPL:
         ('class:bottom-toolbar', f' {running_count}/{total_count} flows running '),
         (last_timeline_colour_class, f' Timeline freshness: {last_timeline} ({last_timeline_relative} ago) ')]
 
-  def _HandleCommand(self,
-                     text: str) -> None:
+  def _HandleCommand(self, text: str) -> None:
     """Handles the command from the user.
 
     A switch for commands, to then be handled by other methods, with results
@@ -283,8 +282,7 @@ class GRRShellREPL:
     else:
       print('Unrecognised command. Use "help" for a command list.')
 
-  def _Exit(self,
-            _: Sequence[str]) -> None:
+  def _Exit(self, _: Sequence[str]) -> None:
     """Exits the shell."""
     sys.exit(0)
 
@@ -384,8 +382,7 @@ class GRRShellREPL:
     except RuntimeError as exception:
       print(str(exception))
 
-  def _Cd(self,
-          params: Sequence[str]) -> None:
+  def _Cd(self, params: Sequence[str]) -> None:
     """Changes the current working directory.
 
     Args:
@@ -403,13 +400,11 @@ class GRRShellREPL:
     except errors.InvalidRemotePathError as exception:
       print(f'No such file or directory: {str(exception)}')
 
-  def _Pwd(self,
-           _: Sequence[str]) -> None:
+  def _Pwd(self, _: Sequence[str]) -> None:
     """Prints the current working directory."""
     print(self._emulated_fs.GetPWD())
 
-  def _Refresh(self,
-               params: list[str]) -> None:
+  def _Refresh(self, params: list[str]) -> None:
     """Collects a new TimelineFlow from the client.
 
     Args:
@@ -423,8 +418,7 @@ class GRRShellREPL:
     path = params[0] if len(params) == 1 else '/'
     self._RefreshTimeline(path=path)
 
-  def _Collect(self,
-               params: Sequence[str]) -> None:
+  def _Collect(self, params: Sequence[str]) -> None:
     """Collects files from the remote client.
 
     Args:
@@ -446,9 +440,8 @@ class GRRShellREPL:
 
     self._grr_shell_client.CollectFilesInBackground(self._emulated_fs.NormaliseFSPath(remote_path), './')
 
-  def _Artifact(self,
-                params: Sequence[str]) -> None:
-    """Collects an artifact from the remote client.
+  def _Artefact(self, params: Sequence[str]) -> None:
+    """Collects an artefact from the remote client.
 
     Args:
       params: Command components from _HandleCommand.
@@ -458,10 +451,9 @@ class GRRShellREPL:
       print(self._commands['artefact'].help)
       return
 
-    self._grr_shell_client.CollectArtifactInBackground(params[0], './')
+    print('\n'.join(self._grr_shell_client.CollectArtefact(params[0], './')))
 
-  def _Info(self,
-            params: list[str]) -> None:
+  def _Info(self, params: list[str]) -> None:
     """Prints stats info, including hashes for remote paths.
 
     If '--ads' is specified in params, the Zone.Identifier Alternate Data Stream
@@ -498,8 +490,7 @@ class GRRShellREPL:
     else:
       print(self._grr_shell_client.FileInfo(path, collect_ads))
 
-  def _Flows(self,
-             params: list[str]) -> None:
+  def _Flows(self, params: list[str]) -> None:
     """Prints information of launched flows and their status."""
     if '--all' in params:
       params.remove('--all')
@@ -507,8 +498,7 @@ class GRRShellREPL:
     else:
       print(self._grr_shell_client.GetBackgroundFlowsState())
 
-  def _FindFiles(self,
-                 params: Sequence[str]) -> None:
+  def _FindFiles(self, params: Sequence[str]) -> None:
     """Searches the FS for files matching a string."""
     if len(params) not in (1, 2):
       print('find requires 1 or 2 arguments. Usage:')
@@ -526,8 +516,7 @@ class GRRShellREPL:
     except (errors.IsAFileError, errors.InvalidRemotePathError) as exc:
       print(str(exc))
 
-  def _Set(self,
-           params: Sequence[str]) -> None:
+  def _Set(self, params: Sequence[str]) -> None:
     """Sets a shell value."""
     if (not params) or params[0] not in _SETTABLE_PROPERTIES:
       print(f'Valid properties: {", ".join(_SETTABLE_PROPERTIES)}')
@@ -544,13 +533,11 @@ class GRRShellREPL:
       except ValueError as error:
         print(f'Could not set max-file-size to {params[1]}: {str(error)}')
 
-  def _Clear(self,
-             _: Sequence[str]) -> None:
+  def _Clear(self, _: Sequence[str]) -> None:
     """Clear the terminal."""
     prompt_toolkit.shortcuts.clear()
 
-  def _ListAllFlows(self,
-                    params: Sequence[str]) -> str:
+  def _ListAllFlows(self, params: Sequence[str]) -> str:
     """List all flows, not just those launched by this shell session."""
     count = 15
     try:
@@ -561,8 +548,7 @@ class GRRShellREPL:
 
     return self._grr_shell_client.ListAllFlows(count=count)
 
-  def _Resume(self,
-              params: Sequence[str]) -> None:
+  def _Resume(self, params: Sequence[str]) -> None:
     """Resume an existing flow, not attached to this GRRShell session."""
     if len(params) != 1:
       print('resume requires 1 Flow ID argument. Usage:')
@@ -574,8 +560,7 @@ class GRRShellREPL:
     except errors.NotResumeableFlowTypeError as error:
       print(str(error))
 
-  def _Detail(self,
-              params: Sequence[str]) -> None:
+  def _Detail(self, params: Sequence[str]) -> None:
     """Display detailed information on a flow."""
     if len(params) != 1:
       print('detail requires exactly 1 Flow ID argument. Usage:')

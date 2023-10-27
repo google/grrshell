@@ -1,9 +1,11 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
 urn: "aff4:/C.0000000000000001/ARTIFACTCOLLECTORFLOWTERMINATEDFLOWID"
 name: "ArtifactCollectorFlow"
 args {
   [type.googleapis.com/grr.ArtifactCollectorFlowArgs] {
     artifact_list: [
-      "artifact_name"
+      "AllOS_File"
     ]
   }
 }

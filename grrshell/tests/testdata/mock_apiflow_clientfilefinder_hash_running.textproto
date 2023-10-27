@@ -1,3 +1,5 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERHASHRUNNINGFLOWID"
 name: "ClientFileFinder"
 args {
@@ -6,7 +8,7 @@ args {
       action_type: HASH
     }
     paths: [
-      "C:/Users/username/Downloads/Firefox Installer.exe"
+      "C:/Users/sydp/Downloads/Firefox Installer.exe"
     ]
   }
 }

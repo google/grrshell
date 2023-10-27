@@ -386,7 +386,7 @@ class GRRShellREPLTest(parameterized.TestCase):
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_artifact(self, in_text, mock_prompt):
     """Tests 'artifact' at the prompt calls CollectArtifactsInBackground."""
-    with mock.patch.object(self.shell._grr_shell_client, 'CollectArtifactInBackground') as mock_collect:
+    with mock.patch.object(self.shell._grr_shell_client, 'CollectArtefact') as mock_collect:
       mock_prompt.side_effect = [in_text, EOFError]
       self.shell.RunShell()
       mock_collect.assert_called_once_with('name', './')

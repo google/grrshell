@@ -33,7 +33,7 @@ class GRRShellFormatter:
     """Initialises a formatter object."""
     self._callback_map: dict[str, Callable[[Any, flow.Flow], list[str]]] = {
         'FileFinderResult': self._FormatFileFinderInfoResult,
-        'StatEntry': self._FormatADSResults,
+        'StatEntry': self._FormatStatEntry,
     }
 
   def FormatFlowResult(self, flow_handle: flow.Flow) -> list[str]:
@@ -56,6 +56,29 @@ class GRRShellFormatter:
       else:
         raise RuntimeError(f'Unsupported result type for output formatting: {name}. Consider raising a bug for support.')
     return lines
+
+  def _FormatStatEntry(self,
+                       payload: jobs_pb2.StatEntry,
+                       flow_handle: flow.Flow) -> list[str]:
+    """Formats details for a StatEntry payload.
+
+    Args:
+      payload: The StatEntry payload to format.
+      flow_handle: The Flow the stat entry originates from.
+
+    Returns:
+      A list of strings, one per line, of formatted output.
+
+    Raises:
+      RuntimeError: If the StatEntry type is unsupported.
+    """
+    args_typename = flow_handle.data.args.TypeName()
+
+    if args_typename == 'grr.GetFileArgs':
+      return self._FormatADSResults(payload, flow_handle)
+    if payload.pathspec.pathtype == jobs_pb2.PathSpec.PathType.REGISTRY:
+      return self._FormatRegistryResult(payload)
+    raise RuntimeError('Unsupported StatEntry type')
 
   def _FormatFileFinderInfoResult(self,
                                   payload: flows_pb2.FileFinderResult,
@@ -132,3 +155,19 @@ class GRRShellFormatter:
         for line in zip_content.splitlines():
           lines.append(f'        {line}')
         return lines
+
+  def _FormatRegistryResult(self, payload: jobs_pb2.StatEntry) -> list[str]:
+    """Formats a Windows Registry payload for display.
+
+    Args:
+      payload: The StatEntry with the Registry results.
+
+    Returns:
+      A list of strings, one per line, of formatted output.
+    """
+    lines: list[str] = [
+        f'    {payload.pathspec.path} '
+        f'({jobs_pb2.StatEntry.RegistryType.Name(payload.registry_type)})']
+    for descriptor, value in payload.registry_data.ListFields():
+      lines.append(f'        {descriptor.name}: {value}')
+    return lines

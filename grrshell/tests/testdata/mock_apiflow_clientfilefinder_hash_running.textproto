@@ -1,8 +1,16 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
 urn: "aff4:/C.0000000000000001/CLIENTFILEFINDERHASHRUNNINGFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/grr.FileFinderArgs"
-  value: "\n-C:/Users/ramo/Downloads/Firefox Installer.exe\020\0052\002\010\001"
+  [type.googleapis.com/grr.FileFinderArgs] {
+    action: {
+      action_type: HASH
+    }
+    paths: [
+      "C:/Users/sydp/Downloads/Firefox Installer.exe"
+    ]
+  }
 }
 state: RUNNING
 flow_id: "CLIENTFILEFINDERHASHRUNNINGFLOWID"

@@ -41,6 +41,7 @@ _INITIAL_TIMELINE_HELP = ('Specify an existing timeline flow to use instead of l
                           ' (Optional)')
 _LOCAL_PATH_HELP = 'Location to store the collected files'
 _MAX_FILE_SIZE_HELP = 'The max file size for GRR collection. 0 for the GRR default. (Optional)'
+_NO_INITIAL_TIMELINE_HELP = 'Start without collecting a timeline from the client'
 _REMOTE_PATH_HELP = 'ClientFileFinder expression for remote files'
 
 _ARTEFACT = flags.DEFINE_string(name='artefact', default='', required=False, help=_ARTIFACT_HELP)
@@ -49,6 +50,7 @@ _DEBUG = flags.DEFINE_bool(name='debug', default=False, help=_DEBUG_HELP)
 _INITIAL_TIMELINE = flags.DEFINE_string(name='initial-timeline', default='', required=False, help=_INITIAL_TIMELINE_HELP)
 _LOCAL_PATH = flags.DEFINE_string(name='local-path', default='', required=False, help=_LOCAL_PATH_HELP)
 _MAX_FILE_SIZE = flags.DEFINE_string(name='max-file-size', default='0', required=False, help=_MAX_FILE_SIZE_HELP)
+_NO_INITIAL_TIMELINE = flags.DEFINE_bool(name='no-initial-timeline', default=False, required=False, help=_NO_INITIAL_TIMELINE_HELP)
 _REMOTE_PATH = flags.DEFINE_string(name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
 
 _GRR_USERNAME = flags.DEFINE_string(name='username', default='', required=False, help=_GRR_USERNAME_HELP)
@@ -68,6 +70,7 @@ shell - Start an (emulated) interactive shell with CLIENT_ID (default if no comm
   --{_CLIENT.name} {_CLIENT_HELP}
   --{_INITIAL_TIMELINE.name} {_INITIAL_TIMELINE_HELP}
   --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
+  --{_NO_INITIAL_TIMELINE.name} {_NO_INITIAL_TIMELINE_HELP}
 
 collect - Collect files from the client (ClientFileFinder flow)
   --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
@@ -127,6 +130,10 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
       print(f'--{flag.name} is required.')
       return
 
+  if _NO_INITIAL_TIMELINE.value and _INITIAL_TIMELINE.value:
+    print(f'--{_NO_INITIAL_TIMELINE.name} and --{_INITIAL_TIMELINE.name} are mutually exclusive.')
+    return
+
   try:
     client = grr_shell_client.GRRShellClient(_GRR_SERVER.value,
                                              _GRR_USERNAME.value,
@@ -144,13 +151,13 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
       return
     client.CollectFiles(_REMOTE_PATH.value, _LOCAL_PATH.value)
   elif argv[0] == 'shell':
-    shell = grr_shell_repl.GRRShellREPL(client, _INITIAL_TIMELINE.value)
+    shell = grr_shell_repl.GRRShellREPL(client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
     shell.RunShell()
   elif argv[0] in ('artifact', 'artefact'):
     if not all((_ARTEFACT.value, _LOCAL_PATH.value)):
       print(_USAGE)
       return
-    client.CollectArtifact(_ARTEFACT.value, _LOCAL_PATH.value)
+    client.ScheduleAndDownloadArtefact(_ARTEFACT.value, _LOCAL_PATH.value)
   else:
     print(f'Unrecognised command\n{_USAGE}')
 
@@ -174,6 +181,7 @@ def _SetUpLogging() -> None:
   logger.debug('artefact flag: %s', _ARTEFACT.value)
   logger.debug('client flag: %s', _CLIENT.value)
   logger.debug('initial-timeline flag: %s', _INITIAL_TIMELINE.value)
+  logger.debug('no-initial-timeline flag: %s', _NO_INITIAL_TIMELINE.value)
   logger.debug('local-path flag: %s', _LOCAL_PATH.value)
   logger.debug('max-file-size flag: %s', _MAX_FILE_SIZE.value)
   logger.debug('remote-path flag: %s', _REMOTE_PATH.value)

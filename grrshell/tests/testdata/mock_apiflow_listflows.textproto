@@ -1,11 +1,19 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiListFlowsResult
 items: [
   {
     urn: "aff4:/C.0000000000000001/A1B2C3D4E5F6A1B2"
     name: "ClientFileFinder"
     state: 0
     args {
-      type_url: "type.googleapis.com/grr.FileFinderArgs"
-      value: "\n\014/remote/path\020\0002\002\010\002"
+      [type.googleapis.com/grr.FileFinderArgs] {
+        action: {
+          action_type: DOWNLOAD
+        }
+        paths: [
+          "/remote/path"
+        ]
+      }
     }
     flow_id: "A1B2C3D4E5F6A1B2"
     client_id: "C.0000000000000001"
@@ -16,8 +24,9 @@ items: [
     name: "TimelineFlow",
     state: 3,
     args: {
-      type_url: "type.googleapis.com/grr.TimelineArgs"
-      value: "\n\001/"
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "/"
+      }
     }
   },
   {
@@ -26,8 +35,9 @@ items: [
     name: "TimelineFlow"
     state: 1
     args: {
-      type_url: "type.googleapis.com/grr.TimelineArgs"
-      value: "\n\005/root"
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "/root"
+      }
     }
   },
   {
@@ -36,8 +46,9 @@ items: [
     name: "TimelineFlow",
     state: 1
     args: {
-      type_url: "type.googleapis.com/grr.TimelineArgs"
-      value: "\n\001/"
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "/"
+      }
     }
   },
   {
@@ -46,8 +57,9 @@ items: [
     name: "TimelineFlow",
     state: 1
     args: {
-      type_url: "type.googleapis.com/grr.TimelineArgs"
-      value: "\n\014/C:/Users/test"
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "C:/Users/test"
+      }
     }
   },
   {
@@ -56,8 +68,9 @@ items: [
     name: "TimelineFlow",
     state: 1
     args: {
-      type_url: "type.googleapis.com/grr.TimelineArgs"
-      value: "\n\004/C:/"
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "C:/"
+      }
     }
   }
 ]

@@ -1,8 +1,10 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
 urn: "aff4:/C.0000000000000001/INTERROGATEFLOWID"
 name: "ClientFileFinder"
 args {
-  type_url: "type.googleapis.com/grr.InterrogateArgs"
-  value: "\010\000"
+  [type.googleapis.com/grr.InterrogateArgs] {
+  }
 }
 state: RUNNING
 flow_id: "INTERROGATEFLOWID"

@@ -1,0 +1,9 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/artifact.proto
+# proto-message: ArtifactDescriptor
+artifact: {
+  name: "Darwin_GRRClientAction"
+  supported_os: "Darwin"
+  sources: {
+    type: GRR_CLIENT_ACTION
+  }
+}

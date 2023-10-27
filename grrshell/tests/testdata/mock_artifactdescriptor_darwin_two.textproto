@@ -1,4 +1,0 @@
-artifact: {
-  name: "DarwinTwo"
-  supported_os: "Darwin"
-}

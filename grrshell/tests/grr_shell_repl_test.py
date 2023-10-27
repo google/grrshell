@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,9 +16,10 @@
 import contextlib
 import datetime
 import io
-import prompt_toolkit
 import sys
 from unittest import mock
+
+import prompt_toolkit
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -41,6 +42,9 @@ _ARTIFACT_NAMES = ['first', 'second', 'third', 'fourth']
 _CLIENT_ID = 'C.0000000000000001'
 
 
+# pylint: disable=protected-access,consider-using-with
+
+
 class GRRShellREPLTest(parameterized.TestCase):
   """Unit tests for the Grr Shell REPL driver."""
 
@@ -50,14 +54,14 @@ class GRRShellREPLTest(parameterized.TestCase):
   @mock.patch.object(grr_shell_client.GRRShellClient, '_ResolveClientID')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'GetOS')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'CollectTimeline')
-  def setUp(self,
+  def setUp(self,  # pylint: disable=arguments-differ
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
             _mock_init_stubby):
     """Set up tests."""
     super().setUp()
-    
+
     mock_collect_timeline.return_value = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
     mock_get_os.return_value = 'Linux'
     mock_resolve_client_id.return_value = _CLIENT_ID
@@ -87,7 +91,7 @@ class GRRShellREPLTest(parameterized.TestCase):
                              expected_relative_timeline,
                              mock_dt):
     """Tests generating the status bar content."""
-    def mock_isinstance_method(obj, classinfo):
+    def mock_isinstance_method(obj, classinfo):  # pylint: disable=invalid-name
       """Mocked version of isinstance needed due to the wrapping of datetime."""
       if hasattr(classinfo, '_mock_wraps'):
         return isinstance(obj, classinfo._mock_wraps)
@@ -124,22 +128,37 @@ class GRRShellREPLTest(parameterized.TestCase):
       for c in _ALIASES:
         self.assertNotIn(f'\t{c} ', buf.getvalue())
 
+  @parameterized.named_parameters(
+      ('with_path', 'ls path', 'path', None, True),
+      ('without_path', 'ls', None, None, True),
+      ('without_path_reversed', 'ls -r', None, None, False),
+      ('without_path_size', 'ls -S', None, 'S', True),
+      ('without_path_time', 'ls -t', None, 't', True),
+      ('without_path_time_reversed', 'ls -tr', None, 't', False),
+  )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
-  def test_RunShell_ls(self, mock_prompt):
+  def test_RunShell_ls(self,
+                       in_text,
+                       expected_path,
+                       expected_sort_key,
+                       expected_reversed,
+                       mock_prompt):
     """Tests entering ls at the prompt correctly calls ls for the emulated_fs."""
-    mock_prompt.side_effect = ['ls path', EOFError]
+    mock_prompt.side_effect = [in_text, EOFError]
 
     with mock.patch.object(self.shell._emulated_fs, 'Ls') as mock_ls:
       self.shell.RunShell()
-      mock_ls.assert_called_once_with('path')
+      mock_ls.assert_called_once_with(expected_path, expected_sort_key, expected_reversed)
 
   @parameterized.named_parameters(
       ('nonexistent', 'ls /nonexist', 'No such file or directory: /nonexist'),
       ('bad_glob', 'ls /tm*/file', 'Globbing only supported for the final path component: /tm*'),
+      ('invalid_option', 'ls -x', 'option -x not recognized'),
+      ('mutually_exclusive_options', 'ls -St', 'Options S, t are mutually exclusive')
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_ls_error(self, in_text, expected_error, mock_prompt):
-    """Tests ls against a nonexistent fs entry."""
+    """Tests ls failure modes."""
     mock_prompt.side_effect = [in_text, EOFError]
 
     with io.StringIO() as buf, contextlib.redirect_stdout(buf):
@@ -218,16 +237,20 @@ class GRRShellREPLTest(parameterized.TestCase):
       mock_collect_timeline.assert_called_once()
       mock_parse_timeline.assert_called_once_with(mock_collect_timeline.return_value, 0)
 
+  @parameterized.named_parameters(
+      ('basic', 'collect path', '/path'),
+      ('directory', 'collect root', '/root/*'),
+      ('recursive', 'collect root/**', '/root/**'),
+      ('file', 'collect root/.bashrc', '/root/.bashrc'),
+  )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
-  def test_RunShell_collect(self, mock_prompt):
+  def test_RunShell_collect(self, in_text, expected_param, mock_prompt):
     """Tests entering collect at the prompt correctly calls CollectFilesInBackground."""
-    mock_prompt.side_effect = ['collect path', EOFError]
+    mock_prompt.side_effect = [in_text, EOFError]
 
     with mock.patch.object(self.shell._grr_shell_client, 'CollectFilesInBackground') as mock_collect:
       self.shell.RunShell()
-      mock_collect.assert_called_once_with('/path', './')
-
-      mock_prompt.side_effect = ['collect path', EOFError]
+      mock_collect.assert_called_once_with(expected_param, './')
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_info(self, mock_prompt):
@@ -237,6 +260,15 @@ class GRRShellREPLTest(parameterized.TestCase):
     with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_fileinfo:
       self.shell.RunShell()
       mock_fileinfo.assert_called_once_with('/path', False)
+
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_info_offline(self, mock_prompt):
+    """Tests entering stat at the prompt correctly calls StatFile."""
+    mock_prompt.side_effect = ['info /path --offline', EOFError]
+
+    with mock.patch.object(self.shell._emulated_fs, 'OfflineFileInfo') as mock_fileinfo:
+      self.shell.RunShell()
+      mock_fileinfo.assert_called_once_with('/path')
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_flows(self, mock_prompt):
@@ -354,7 +386,7 @@ class GRRShellREPLTest(parameterized.TestCase):
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_artifact(self, in_text, mock_prompt):
     """Tests 'artifact' at the prompt calls CollectArtifactsInBackground."""
-    with mock.patch.object(self.shell._grr_shell_client, 'CollectArtifactInBackground') as mock_collect:
+    with mock.patch.object(self.shell._grr_shell_client, 'CollectArtefact') as mock_collect:
       mock_prompt.side_effect = [in_text, EOFError]
       self.shell.RunShell()
       mock_collect.assert_called_once_with('name', './')
@@ -413,10 +445,50 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering detail at the prompt calls the correct method."""
     mock_prompt.side_effect = ['detail flowid', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'Detail') as mock_detail:
+    with mock.patch.object(self.shell._grr_shell_client, 'FlowDetail') as mock_detail:
 
       self.shell.RunShell()
       mock_detail.assert_called_once_with('flowid')
+
+  @parameterized.named_parameters(
+      ('short_only', 'help ls', grr_shell_repl._LS_HELP.short),
+      ('long_check_short', 'help find', grr_shell_repl._FIND_HELP.short),
+      ('long_check_long', 'help find', grr_shell_repl._FIND_HELP_LONG),
+      ('invalid', 'help foobar', 'Unknown command'),
+  )
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_extended_help(self, in_text, expected, mock_prompt):
+    """Tests fetching extended help text for a command."""
+    mock_prompt.side_effect = [in_text, EOFError]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.shell.RunShell()
+
+      self.assertIn(expected, buf.getvalue())
+
+  @parameterized.named_parameters(
+      ('help', 'help one two', grr_shell_repl._HELP_HELP.short),
+      ('ls', 'ls one two', grr_shell_repl._LS_HELP.short),
+      ('cd', 'cd one two', grr_shell_repl._CD_HELP.short),
+      ('refresh', 'refresh one two', grr_shell_repl._REFRESH_HELP.short),
+      ('collect', 'collect', grr_shell_repl._COLLECT_HELP.short),
+      ('find_short', 'find', grr_shell_repl._FIND_HELP.short),
+      ('find_long', 'find one two three', grr_shell_repl._FIND_HELP.short),
+      ('artefact', 'artefact', grr_shell_repl._ARTEFACT_HELP.short),
+      ('info_flags', 'info --ads --offline', grr_shell_repl._INFO_HELP.short),
+      ('info_count', 'info', grr_shell_repl._INFO_HELP.short),
+      ('resume', 'resume', grr_shell_repl._RESUME_HELP.short),
+      ('detail', 'detail', grr_shell_repl._DETAIL_HELP.short)
+  )
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_malformed_command(self, in_text, expected, mock_prompt):
+    """Tests output when command syntax is incorrect."""
+    mock_prompt.side_effect = [in_text, EOFError]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.shell.RunShell()
+
+      self.assertIn(expected, buf.getvalue())
 
 
 class GRRShellREPLTestWindows(parameterized.TestCase):
@@ -428,7 +500,7 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
   @mock.patch.object(grr_shell_client.GRRShellClient, '_ResolveClientID')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'GetOS')
   @mock.patch.object(grr_shell_client.GRRShellClient, 'CollectTimeline')
-  def setUp(self,
+  def setUp(self,  # pylint: disable=arguments-differ
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
@@ -484,7 +556,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
   def setUp(self):
     """Set up tests."""
     super().setUp()
-    
+
     timeline_data = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
@@ -497,7 +569,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     commands = [name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
 
-    self.completer = grr_shell_repl.GrrShellREPLPromptCompleter(
+    self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
 
   def test_Init(self):
@@ -522,6 +594,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
                      'artefact', 'clear', 'resume', 'detail']),
       ('find_space_only', 'find ', []),
       ('hash_space_only', 'hash ', ['..', 'root/', 'odd/', 'root_file']),
+      ('help_c', 'help c', ['cd', 'clear', 'collect'], -1),
       ('info_space_only', 'info ', ['..', 'root/', 'odd/', 'root_file']),
       ('ls_bare', 'ls', ['ls'], -2),
       ('ls_r', 'ls r', ['root/', 'root_file'], -1),
@@ -555,7 +628,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
   def setUp(self):
     """Set up tests."""
     super().setUp()
-    
+
     timeline_data = open(_SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
@@ -568,7 +641,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     commands = [name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
 
-    self.completer = grr_shell_repl.GrrShellREPLPromptCompleter(
+    self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
 
   def test_Init(self):
@@ -596,4 +669,3 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
 
 if __name__ == '__main__':
   absltest.main()
-

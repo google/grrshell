@@ -1,11 +1,11 @@
 # Copyright 2023 Google LLC
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ import re
 from typing import cast, Union
 
 from absl import logging
+import humanize
 
 from grrshell.lib import errors
 from grrshell.lib import utils
@@ -41,10 +42,10 @@ class _TimelineRow:
   uid: int = 0
   gid: int = 0
   size: int = 0
-  atime: float = 0.0
-  mtime: float = 0.0
-  ctime: float = 0.0
-  crtime: float = 0.0
+  atime: float = 0.0  # Access
+  mtime: float = 0.0  # Modified
+  ctime: float = 0.0  # Changed
+  crtime: float = 0.0  # Created
 
   def __post_init__(self):
     # Just casting to our actual types since they are all received as `str`
@@ -73,6 +74,15 @@ class _EmulatedFile:
   stats: _TimelineRow
 
   def GetLSEntry(self, dot_name: bool = False) -> '_LSEntry':
+    """Return an LSEntry object for the directory entry.
+
+    Args:
+      dot_name: True if the objects name should be a '.', False for the objects
+        actual name.
+
+    Returns:
+      The LSEntry for the object.
+    """
     return _LSEntry(self.stats.mode_as_string, self.stats.uid, self.stats.gid, self.stats.size,
                     utils.UnixTSToReadable(self.stats.mtime), '.' if dot_name else self.filename)
 
@@ -94,12 +104,18 @@ class _LSEntry:
   name: str = ''
 
   def __str__(self) -> str:
-    return (f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12} {self.mtime} {self.name}')
+    return f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12} {self.mtime} {self.name}'
 
   def __lt__(self, other: '_LSEntry') -> bool:
     if (self.mode_as_string[0], other.mode_as_string[0]).count('d') == 1:
       return self.mode_as_string[0] == 'd'
     return self.name < other.name
+
+
+_LS_SORT_KEY_MAP = {
+    'S': lambda l: l.size,
+    't': lambda l: l.mtime
+}
 
 
 class GrrShellEmulatedFS:
@@ -210,7 +226,9 @@ class GrrShellEmulatedFS:
       return False
 
   def Ls(self,
-         path: str | None = None) -> list[_LSEntry]:
+         path: str | None = None,
+         sortkey: str | None = None,
+         ascending: bool = True) -> list[_LSEntry]:
     """Returns a list of ls entries for a path.
 
     If a directory is provided, a list of children is returned. If a file is
@@ -218,6 +236,8 @@ class GrrShellEmulatedFS:
 
     Args:
       path: The path in which to look for children.
+      sortkey: Sorting method. Key for _LS_SORT_KEY_MAP dict.
+      ascending: True if entries should be in ascending order, False otherwise,
 
     Returns:
       A list of ls entries.
@@ -250,9 +270,9 @@ class GrrShellEmulatedFS:
       if glob_tail:
         globbed_names = fnmatch.filter([e.name for e in entries], glob_tail)
         entries = [e for e in entries if e.name in globbed_names]
-      return entries
     else:
-      return [path_entry.GetLSEntry()]
+      entries = [path_entry.GetLSEntry()]
+    return sorted(entries, key=_LS_SORT_KEY_MAP.get(sortkey), reverse=not ascending)
 
   def Cd(self,
          path: str) -> None:
@@ -391,6 +411,38 @@ class GrrShellEmulatedFS:
     except errors.InvalidRemotePathError:
       pass  # Path doesn't exist, so clearing fails, and that's ok.
 
+  def OfflineFileInfo(self, remote_path: str) -> str:
+    """Returns file information based on the EFS content.
+
+    Args:
+      remote_path: The remote file to return cached info on.
+
+    Returns:
+      A string with information on the remote file.
+    """
+    remote_path = self.NormaliseFSPath(remote_path)
+
+    try:
+      entry = self._ResolveRemotePathToEmulatedFS(remote_path)
+    except errors.InvalidRemotePathError:
+      return f'No such file or directory: {remote_path}'
+
+    natural_size = humanize.naturalsize(entry.stats.size, binary=True, format='%.1f')
+
+    lines: list[str] = []
+    lines.append(entry.stats.name)
+    lines.append(f'    mode:   {entry.stats.mode_as_string}')
+    lines.append(f'    inode:  {entry.stats.inode}')
+    lines.append(f'    uid:    {entry.stats.uid}')
+    lines.append(f'    gid:    {entry.stats.gid}')
+    lines.append(f'    size:   {entry.stats.size} 'f'({natural_size})')
+    lines.append(f'    atime:  {entry.stats.atime} - {utils.UnixTSToReadable(entry.stats.atime)}')
+    lines.append(f'    mtime:  {entry.stats.mtime} - {utils.UnixTSToReadable(entry.stats.mtime)}')
+    lines.append(f'    ctime:  {entry.stats.ctime} - {utils.UnixTSToReadable(entry.stats.ctime)}')
+    lines.append(f'    crtime: {entry.stats.crtime} - {utils.UnixTSToReadable(entry.stats.crtime)}')
+
+    return '\n'.join(lines)
+
   def _ResolveRemotePathToEmulatedFS(self, remote_path: str) -> _FSEntry:
     """Resolves a remote path string to a pointer into the emulated FS.
 
@@ -425,4 +477,3 @@ class GrrShellEmulatedFS:
       to_return.append(child)
 
     return to_return
-

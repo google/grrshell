@@ -168,6 +168,7 @@ def _SetUpLogging() -> None:
                           f'grrshell_{datetime.datetime.now().strftime("%Y%m%dT%H%M%S")}.log')
 
   logger.setLevel(logging.DEBUG)
+  logger.propagate = False
   fh = logging.logging.FileHandler(filename)
 
   fh.setFormatter(logging.logging.Formatter(

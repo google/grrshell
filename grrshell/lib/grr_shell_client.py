@@ -228,12 +228,12 @@ class GRRShellClient:
     self._last_seen_monitor = _LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
     self._last_seen_monitor.StartMonitor()
 
-  def __del__(self):
+  def WaitForBackgroundCompletions(self):
     """Destructor for GRRShellClient.
 
     Waits for any launched flows to complete before exiting.
     """
-    logger.debug('GRRShellClient Destruction')
+    logger.debug('GRRShellClient WaitForBackgroundCompletions')
 
     if any(f.future.running() for f in self._launched_flows.values()):
       pending_flows = ', '.join(f.flow.flow_id for f in self._launched_flows.values() if f.future.running())

@@ -355,7 +355,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
   def test_Cleanup(self):
     """Tests destructor."""
     with mock.patch.object(self.client._collection_threads, 'shutdown') as mock_shutdown:
-      self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
+      self.client.WaitForBackgroundCompletions()
       mock_shutdown.assert_called_once()
 
   @mock.patch.object(grr_api, 'InitHttp', autospec=True)
@@ -769,7 +769,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client.CollectFilesInBackground('/remote/path', local_path)
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
+        self.client.WaitForBackgroundCompletions()
 
         self.assertIn(
             'Waiting for collection threads CLIENTFILEFINDERRUNNINGFLOWID to finish (<CTRL+C> to force exit)\n',
@@ -804,7 +804,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client._collection_threads.shutdown()
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.__del__()  # __del__ instead of del because of GC. pylint: disable=unnecessary-dunder-call
+        self.client.WaitForBackgroundCompletions()
 
         self.assertIn('CLIENTFILEFINDERRUNNINGFLOWID - Test exception', buf.getvalue())
 

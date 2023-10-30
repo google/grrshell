@@ -52,8 +52,6 @@ _ANSI_COLOUR_END = '\x1b[0m'
 
 _SETTABLE_PROPERTIES = ('max-file-size',)
 
-logger = logging.logging.getLogger('grrshell')
-
 
 @dataclasses.dataclass
 class _Help:
@@ -176,6 +174,7 @@ class GRRShellREPL:
     except EOFError:  # CTRL+D
       logger.debug('User entered <CTRL+D>')
     finally:
+      self._grr_shell_client.WaitForBackgroundCompletions()
       print('Exiting')
 
   def _BuildCommands(self) -> dict[str, _Command]:

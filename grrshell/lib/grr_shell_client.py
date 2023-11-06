@@ -13,12 +13,10 @@
 # limitations under the License.
 """GRR Shell client."""
 
-import abc
 from concurrent import futures
 import dataclasses
 import datetime
 import io
-import itertools
 import os
 import re
 import shutil
@@ -26,7 +24,7 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Any, Iterator
+from typing import Iterator
 import zipfile
 
 from absl import logging
@@ -38,8 +36,9 @@ from grr_api_client import api as grr_api
 from grr_response_proto import artifact_pb2
 from grr_response_proto import flows_pb2
 from grr_response_proto import jobs_pb2
-from grr_response_proto import timeline_pb2
+from grrshell.lib import client_monitors
 from grrshell.lib import errors
+from grrshell.lib import flow_args_parsers
 from grrshell.lib import formatters
 from grrshell.lib import utils
 
@@ -75,110 +74,6 @@ class _LaunchedFlow:
   exception_displayed: bool = False
 
 
-class _MonitorBase(metaclass=abc.ABCMeta):
-  """Base class for background monitor classes."""
-
-  DELAY = 60
-
-  @abc.abstractmethod
-  def __init__(self):
-    self._mutex = threading.Lock()
-
-  @abc.abstractmethod
-  def _SingleFetch(self):
-    """Collect the information that will be cached."""
-
-  def StartMonitor(self):
-    """Starts the monitor background thread."""
-    logger.debug('Starting monitor thread for %s', self.__class__.__name__)
-    threading.Thread(target=self._Monitor, daemon=True).start()
-
-  def _Monitor(self):
-    """Repeatedly polls _SingleFetch()."""
-    while True:
-      with self._mutex:
-        self._SingleFetch()
-      time.sleep(self.DELAY)
-
-
-class _LastSeenMonitor(_MonitorBase):
-  """Background caching class for LastSeen time of a client."""
-
-  def __init__(self, grr_client: grr_api.client.ClientRef):
-    """Initialises the Monitor."""
-    super().__init__()
-    self._last_seen: datetime.datetime
-    self._grr_client: grr_api.client.ClientRef = grr_client
-
-  def _SingleFetch(self):
-    """Caches the LastSeen time of the client."""
-    self._last_seen = datetime.datetime.fromtimestamp(
-        self._grr_client.Get().data.last_seen_at / 1000000,
-        tz=datetime.timezone.utc)
-    logger.debug('Last seen: %s', self._last_seen)
-
-  def GetLastSeen(self) -> datetime.datetime:
-    """Gets the last seen time.
-
-    Returns:
-      The cached last seen time of the client.
-    """
-    with self._mutex:
-      return self._last_seen
-
-
-class _FlowMonitor(_MonitorBase):
-  """Background caching of Flow information."""
-
-  def __init__(self, grr_client: grr_api.client.ClientRef):
-    """Initialises the FlowMonitor."""
-    super().__init__()
-    self._grr_client: grr_api.client.ClientRef = grr_client
-    self._flows: dict[str, flow.Flow] = {}
-
-  def _Monitor(self):
-    """Repeatedly polls _SingleFetch()."""
-    while True:
-      with self._mutex:
-        self._SingleFetch()
-
-      for flow_id in self._flows:
-        self._UpdateCachedFlow(flow_id)
-
-      time.sleep(self.DELAY)
-
-  def _SingleFetch(self):
-    """Fetches all launched flows on the client."""
-    logger.debug('Fetching launched flows')
-    for flow_handle in self._grr_client.ListFlows():
-      if flow_handle.flow_id not in self._flows:
-        self._flows[flow_handle.flow_id] = flow_handle
-
-  def GetFlowsInfoList(self, count: int = 50) -> Iterator[flow.Flow]:
-    """Returns info on flows from the cache."""
-    with self._mutex:
-      values = list(self._flows.values())
-      values = sorted(values,
-                      key=lambda x: x.data.started_at, reverse=True)
-      for f in itertools.islice(values, 0, count):
-        yield f
-
-  def GetFlow(self, flow_id: str) -> flow.Flow:
-    """Returns cached info on a single flow."""
-    self._UpdateCachedFlow(flow_id)
-    with self._mutex:
-      return self._flows[flow_id]
-
-  def _UpdateCachedFlow(self, flow_id: str) -> None:
-    """Fetches and caches info for a single flow."""
-    if (flow_id not in self._flows or
-        not self._flows[flow_id].data.args.TypeName() or
-        self._flows[flow_id].data.state == flows_pb2.FlowContext.State.RUNNING):
-      with self._mutex:
-        flow_handle = self._grr_client.Flow(flow_id).Get()
-        self._flows[flow_id] = flow_handle
-
-
 class GRRShellClient:
   """For use by GRR Shell, handles scheduling and collecting GRR flows."""
 
@@ -203,8 +98,7 @@ class GRRShellClient:
     self._launched_flows: dict[str, _LaunchedFlow] = {}
     self._collection_threads = futures.ThreadPoolExecutor(max_workers=40)
 
-    self._grr_stubby = grr_api.InitHttp(api_endpoint=grr_server,
-                                        auth=(grr_user, grr_pass))
+    self._grr_stubby = grr_api.InitHttp(api_endpoint=grr_server, auth=(grr_user, grr_pass))
 
     self._grr_client_id = self._ResolveClientID(client_id)
     self._grr_client = self._grr_stubby.Client(self._grr_client_id)
@@ -222,10 +116,10 @@ class GRRShellClient:
     self._artefact_list_mutex: threading.Lock = threading.Lock()
     threading.Thread(target=self._RetrieveSupportedArtefacts, daemon=True).start()
 
-    self._flow_monitor: _FlowMonitor = _FlowMonitor(self._grr_stubby.Client(self._grr_client_id))
+    self._flow_monitor = client_monitors.FlowMonitor(self._grr_stubby.Client(self._grr_client_id))
     self._flow_monitor.StartMonitor()
 
-    self._last_seen_monitor = _LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
+    self._last_seen_monitor = client_monitors.LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
     self._last_seen_monitor.StartMonitor()
 
   def WaitForBackgroundCompletions(self):
@@ -526,7 +420,7 @@ class GRRShellClient:
       else:
         state = flows_pb2.FlowContext.State.Name(bg_flow.flow.data.state)
 
-      param = self._ParseArgsFromFlow(bg_flow.flow)
+      param = flow_args_parsers.Parse(bg_flow.flow)[0]
 
       error_msg = ''
       if not running and bg_flow.future.exception():
@@ -572,7 +466,7 @@ class GRRShellClient:
 
     for flow_handle in flows:
       lines.append(f'\t{flow_handle.flow_id} {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)} '
-                   f'{flow_handle.data.name} {self._ParseArgsFromFlow(flow_handle)} '
+                   f'{flow_handle.data.name} {flow_args_parsers.Parse(flow_handle)[0]} '
                    f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
     return '\n'.join(lines)
 
@@ -628,10 +522,12 @@ class GRRShellClient:
     lines: list[str] = [
         flow_handle.data.name,
         f'\tCreator     {flow_handle.data.creator}',
-        f'\tArgs        {self._ParseArgsFromFlow(flow_handle)}',
         f'\tState       {flows_pb2.FlowContext.State.Name(flow_handle.data.state)}',
         f'\tStarted     {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)}',
-        f'\tLast Active {utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)}']
+        f'\tLast Active {utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)}',
+        '\tArgs:']
+    for l in flow_args_parsers.Parse(flow_handle, True):
+      lines.append(f'\t            {l}')
 
     if flow_handle.data.state == flows_pb2.FlowContext.ERROR:
       # We need to manually parse out the error message :(
@@ -847,47 +743,6 @@ class GRRShellClient:
         raise FileExistsError(local_path)
     else:
       os.makedirs(local_path, exist_ok=True)
-
-  def _ParseArgsFromFlow(self, flow_handle: flow.Flow) -> str:
-    """Parse out flow args from a flow object.
-
-    Args:
-      flow_handle: The flow to extract runtime args from.
-
-    Returns:
-      The argument for the flow.
-    """
-    # Flow data args can be various args protos, depending on the flow type
-    # that was launched.
-    def FileFinderArgsParse(args: Any) -> str:
-      ff_args = flows_pb2.FileFinderArgs.FromString(args.value)
-      action = flows_pb2.FileFinderAction.Action.Name(ff_args.action.action_type)
-      return f'{action} {ff_args.paths[0]}'
-
-    def TimelineArgsParse(args: Any) -> str:
-      return timeline_pb2.TimelineArgs.FromString(args.value).root.decode('utf-8')
-
-    def ArtifactCollectorFlowArgsParse(args: Any) -> str:
-      return flows_pb2.ArtifactCollectorFlowArgs.FromString(args.value).artifact_list[0]
-
-    def GetFileArgsParse(args: Any) -> str:
-      args = flows_pb2.GetFileArgs.FromString(args.value)
-      param = args.pathspec.path
-      if args.pathspec.stream_name:
-        param = f'{param}:{args.pathspec.stream_name}'
-      return param
-
-    parsing_functions = {
-        'grr.FileFinderArgs': FileFinderArgsParse,
-        'grr.GetFileArgs': GetFileArgsParse,
-        'grr.TimelineArgs': TimelineArgsParse,
-        'grr.ArtifactCollectorFlowArgs': ArtifactCollectorFlowArgsParse,
-    }
-
-    typename = flow_handle.data.args.TypeName()
-    if typename in parsing_functions:
-      return parsing_functions[typename](flow_handle.data.args)
-    return '<UNSUPPORTED FLOW TYPE>'
 
   def _IsFlowSynchronous(self, flow_handle: flow.Flow) -> bool:
     """Given a flow, details if resuming the flow should be synchronous or not.

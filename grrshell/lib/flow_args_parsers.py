@@ -62,16 +62,18 @@ _FLOW_ARGS_PARSING_FUNCTIONS = {
 }
 
 
-def Parse(flow_handle: flow.Flow, allow_multiline: bool = False) -> list[str]:
+def Parse(flow_handle: flow.Flow, multiline: bool = False) -> list[str]:
   """Parse out flow args from a flow object.
 
   Args:
     flow_handle: The flow to extract runtime args from.
+    multiline: True if the context allows for multiple lines, False if result
+      should only be a single line.
 
   Returns:
     The argument for the flow.
   """
   typename = flow_handle.data.args.TypeName()
   if typename in _FLOW_ARGS_PARSING_FUNCTIONS:
-    return _FLOW_ARGS_PARSING_FUNCTIONS[typename](flow_handle.data.args, allow_multiline)
+    return _FLOW_ARGS_PARSING_FUNCTIONS[typename](flow_handle.data.args, multiline)
   return ['<UNSUPPORTED FLOW TYPE>']

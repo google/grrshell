@@ -1,0 +1,16 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/ARTIFACTCOLLECTORFLOWRUNNINGFLOWID"
+name: "ArtifactCollectorFlow"
+args {
+  [type.googleapis.com/grr.ArtifactCollectorFlowArgs] {
+    artifact_list: [
+      "AllOS_File",
+      "AllOS_ArtifactGroup"
+    ]
+  }
+}
+state: RUNNING
+flow_id: "ARTIFACTCOLLECTORFLOWRUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 8000000  # 8 seconds past epoch

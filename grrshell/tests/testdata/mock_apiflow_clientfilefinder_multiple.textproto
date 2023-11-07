@@ -8,7 +8,8 @@ args {
       action_type: HASH
     }
     paths: [
-      "C:/Users/ramoj/Downloads/Firefox Installer.exe"
+      "C:/Users/ramoj/Downloads/Firefox Installer.exe",
+      "C:/Users/ramoj/Downloads/notepad++.exe"
     ]
   }
 }

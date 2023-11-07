@@ -100,35 +100,41 @@ _MOCK_APIFLOW_CFF_DOWNLOAD_ERROR = flow.Flow(
 
 _MOCK_CLIENTFILEFINDER_TERMINATED_DETAIL = """ClientFileFinder
 \tCreator     creator
-\tArgs        DOWNLOAD /remote/path
 \tState       TERMINATED
 \tStarted     1970-01-01T00:00:06Z
-\tLast Active 1970-01-01T00:00:20Z"""
+\tLast Active 1970-01-01T00:00:20Z
+\tArgs:
+\t            Action: DOWNLOAD
+\t            Path: /remote/path"""
 
 _MOCK_CLIENTFILEFINDER_ERROR_DETAIL = """ClientFileFinder
 \tCreator     creator
-\tArgs        DOWNLOAD /remote/path
 \tState       ERROR
 \tStarted     1970-01-01T00:00:25Z
 \tLast Active 1970-01-01T00:00:30Z
+\tArgs:
+\t            Action: DOWNLOAD
+\t            Path: /remote/path
 \tError Details
 \t\t"Test error\""""
 
 _MOCK_TIMELINE_ERROR_DETAIL = """TimelineFlow
 \tCreator     creator
-\tArgs        
 \tState       ERROR
 \tStarted     1970-01-01T00:00:16Z
 \tLast Active 1970-01-01T00:00:32Z
+\tArgs:
+\t            root: 
 \tError Details
 \t\tThe timeline root directory not specified"""
 
 _MOCK_TIMELINE_ERROR_STACKTRACE_DETAIL = """TimelineFlow
 \tCreator     creator
-\tArgs        /
 \tState       ERROR
 \tStarted     1970-01-01T00:00:17Z
 \tLast Active 1970-01-01T00:00:33Z
+\tArgs:
+\t            root: /
 \tError Details
 \t\tStacktrace placeholder
 \t\t  second line
@@ -137,10 +143,11 @@ _MOCK_TIMELINE_ERROR_STACKTRACE_DETAIL = """TimelineFlow
 
 _MOCK_TIMELINE_ERROR_NOMESSAGE_DETAIL = """TimelineFlow
 \tCreator     creator
-\tArgs        /
 \tState       ERROR
 \tStarted     1970-01-01T00:00:18Z
 \tLast Active 1970-01-01T00:00:34Z
+\tArgs:
+\t            root: /
 \tError Details
 \t\tMissing error message"""
 
@@ -837,8 +844,8 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertIn(
         '\tGETFILERUNNINGFLOWID 1970-01-01T00:00:07Z GetFile C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier RUNNING',
         result)
-      self.assertIn('\tINTERROGATEFLOWID 1970-01-01T00:00:04Z ClientFileFinder <UNSUPPORTED FLOW TYPE> RUNNING', result)
-      self.assertIn('\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow / RUNNING', result)
+      self.assertIn('\tINTERROGATEFLOWID 1970-01-01T00:00:04Z Interrogate <UNSUPPORTED FLOW TYPE> RUNNING', result)
+      self.assertIn('\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow root: / RUNNING', result)
 
   @parameterized.named_parameters(
       ('cff_success', _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED, _MOCK_CLIENTFILEFINDER_TERMINATED_DETAIL),

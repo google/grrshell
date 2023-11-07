@@ -137,8 +137,7 @@ class GRRShellFormatter:
     Returns:
       A list of strings, one per line, of formatted output.
     """
-    pathtype = jobs_pb2.PathSpec.PathType.Name(
-        payload.pathspec.nested_path.pathtype).lower()
+    pathtype = jobs_pb2.PathSpec.PathType.Name(payload.pathspec.nested_path.pathtype).lower()
     path = (f'{flow_handle.client_id}_flow_{flow_handle.data.name}_{flow_handle.flow_id}/{flow_handle.client_id}/fs/{pathtype}'
             f'{payload.pathspec.path}{payload.pathspec.nested_path.path}:{payload.pathspec.nested_path.stream_name}')
 

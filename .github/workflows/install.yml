@@ -3,7 +3,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
-  poetry:
+  install:
     runs-on: ubuntu-latest
     strategy:
       matrix:

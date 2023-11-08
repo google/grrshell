@@ -6,7 +6,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
-  poetry:
+  coverage:
     runs-on: ubuntu-latest
     strategy:
       matrix:

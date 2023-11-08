@@ -19,7 +19,7 @@ jobs:
       run: |
         pip install poetry
         poetry install
-    - name: Test with unittest
+    - name: Run coverage
       run: |
         poetry run coverage run -m unittest discover -s grrshell/tests -p '*.py' && poetry run coverage json
     - name: Upload coverage reports to Codecov

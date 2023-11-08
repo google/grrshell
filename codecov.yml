@@ -6,23 +6,7 @@ coverage:
   precision: 1
   round: nearest
   range: "85...100"
-  status:
-    project:
-      default:
-        target: auto
-        threshold: 5%
-        base: auto
-    patch:
-      default:
-        target: auto
-        threshold: 5%
-        base: auto
-    changes:
 
-      default:
-        target: auto
-        threshold: 5%
-        base: auto
 github_checks:
   annotations: true
 comment: false

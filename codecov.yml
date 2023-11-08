@@ -8,5 +8,5 @@ coverage:
   range: "85...100"
 
 github_checks:
-  annotations: true
+  annotations: false
 comment: false

@@ -122,9 +122,6 @@ class GRRShellClient:
     self._last_seen_monitor = client_monitors.LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
     self._last_seen_monitor.StartMonitor()
 
-  def untested(self):
-    print('This is not covered by unit tests')
-
   def WaitForBackgroundCompletions(self):
     """Destructor for GRRShellClient.
 

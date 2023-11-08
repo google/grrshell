@@ -25,3 +25,4 @@ coverage:
         base: auto
 github_checks:
   annotations: true
+comment: false

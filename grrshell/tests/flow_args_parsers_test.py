@@ -72,6 +72,21 @@ _MOCK_APIFLOW_INTERROGATE = flow.Flow(
     data=text_format.Parse(open(_MOCK_APIFLOW_INTERROGATE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
     context=mock.MagicMock())
 _MOCK_APIFLOW_INTERROGATE_EXPECTED = ['<UNSUPPORTED FLOW TYPE>']
+
+_MOCK_APIFLOW_COLLECTFILES_SINGLE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_collectfilesbyknownpath_single.textproto'
+_MOCK_APIFLOW_COLLECTFILES_SINGLE = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_COLLECTFILES_SINGLE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+_MOCK_APIFLOW_COLLECTFILES_SINGLE_EXPECTED_SINGLE = ['CONTENT C:/Users/ramoj/NTUSER.DAT']
+_MOCK_APIFLOW_COLLECTFILES_SINGLE_EXPECTED_MULTI = ['Collection Level: CONTENT', 'Path: C:/Users/ramoj/NTUSER.DAT']
+
+_MOCK_APIFLOW_COLLECTFILES_MULTIPLE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_collectfilesbyknownpath_multiple.textproto'
+_MOCK_APIFLOW_COLLECTFILES_MULTIPLE = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_COLLECTFILES_MULTIPLE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+_MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_SINGLE = ['CONTENT <MULTIPLE PATHS>']
+_MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_MULTI = ['Collection Level: CONTENT', 'Path: C:/Users/ramoj/NTUSER.DAT',
+                                                      'Path: C:/Users/ramoj/ntuser.dat.LOG1', 'Path: C:/Users/ramoj/ntuser.dat.LOG2']
 # pylint: enable=consider-using-with
 
 
@@ -93,6 +108,10 @@ class FlowArgsParsersTest(parameterized.TestCase):
       ('getfile_multiline', _MOCK_APIFLOW_GETFILE, True, _MOCK_APIFLOW_GETFILE_EXPECTED),
       ('interrogate_singleline', _MOCK_APIFLOW_INTERROGATE, False, _MOCK_APIFLOW_INTERROGATE_EXPECTED),
       ('interrogate_multiline', _MOCK_APIFLOW_INTERROGATE, True, _MOCK_APIFLOW_INTERROGATE_EXPECTED),
+      ('collectfiles_single_singleline', _MOCK_APIFLOW_COLLECTFILES_SINGLE, False, _MOCK_APIFLOW_COLLECTFILES_SINGLE_EXPECTED_SINGLE),
+      ('collectfiles_single_multiline', _MOCK_APIFLOW_COLLECTFILES_SINGLE, True, _MOCK_APIFLOW_COLLECTFILES_SINGLE_EXPECTED_MULTI),
+      ('collectfiles_multiple_singleline', _MOCK_APIFLOW_COLLECTFILES_MULTIPLE, False, _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_SINGLE),
+      ('collectfiles_multiple_multiline', _MOCK_APIFLOW_COLLECTFILES_MULTIPLE, True, _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_MULTI),
   )
   def test_Parse(self, flow_handle: flow.Flow, multiline: bool, expected_output: list[str]):
     """Tests the Parse function in flow_args_parsers."""

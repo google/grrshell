@@ -1,0 +1,16 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/COLLECTFILESBYKNOWNPATHRUNNINGFLOWID"
+name: "CollectFilesByKnownPath"
+args {
+  [type.googleapis.com/grr.CollectFilesByKnownPathArgs] {
+    collection_level: CONTENT
+    paths: [
+      "C:/Users/ramoj/NTUSER.DAT"
+    ]
+  }
+}
+state: RUNNING
+flow_id: "COLLECTFILESBYKNOWNPATHRUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 8000000  # 8 seconds past epoch

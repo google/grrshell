@@ -87,6 +87,13 @@ _MOCK_APIFLOW_COLLECTFILES_MULTIPLE = flow.Flow(
 _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_SINGLE = ['CONTENT <MULTIPLE PATHS>']
 _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_MULTI = ['Collection Level: CONTENT', 'Path: C:/Users/ramoj/NTUSER.DAT',
                                                       'Path: C:/Users/ramoj/ntuser.dat.LOG1', 'Path: C:/Users/ramoj/ntuser.dat.LOG2']
+
+_MOCK_APIFLOW_COLLECTBROWSERHIST_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_collectbrowserhistory.textproto'
+_MOCK_APIFLOW_COLLECTBROWSERHIST = flow.Flow(
+    data=text_format.Parse(open(_MOCK_APIFLOW_COLLECTBROWSERHIST_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
+    context=mock.MagicMock())
+_MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_SINGLE = ['FIREFOX,CHROME,INTERNET_EXPLORER']
+_MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_MULTI = ['Browser: FIREFOX', 'Browser: CHROME', 'Browser: INTERNET_EXPLORER']
 # pylint: enable=consider-using-with
 
 
@@ -112,6 +119,8 @@ class FlowArgsParsersTest(parameterized.TestCase):
       ('collectfiles_single_multiline', _MOCK_APIFLOW_COLLECTFILES_SINGLE, True, _MOCK_APIFLOW_COLLECTFILES_SINGLE_EXPECTED_MULTI),
       ('collectfiles_multiple_singleline', _MOCK_APIFLOW_COLLECTFILES_MULTIPLE, False, _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_SINGLE),
       ('collectfiles_multiple_multiline', _MOCK_APIFLOW_COLLECTFILES_MULTIPLE, True, _MOCK_APIFLOW_COLLECTFILES_MULTIPLE_EXPECTED_MULTI),
+      ('collectbrowserhistory_singleline', _MOCK_APIFLOW_COLLECTBROWSERHIST, False, _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_SINGLE),
+      ('collectbrowserhistory_multiline', _MOCK_APIFLOW_COLLECTBROWSERHIST, True, _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_MULTI),
   )
   def test_Parse(self, flow_handle: flow.Flow, multiline: bool, expected_output: list[str]):
     """Tests the Parse function in flow_args_parsers."""

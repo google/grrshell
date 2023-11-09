@@ -66,12 +66,20 @@ def _CollectFilesByKnownPathArgsParse(args: Any, multiline: bool) -> list[str]:
   return [f'{level} <MULTIPLE PATHS>']
 
 
+def _CollectBrowserHistoryArgsParse(args: Any, multiline: bool) -> list[str]:
+  args = flows_pb2.CollectBrowserHistoryArgs.FromString(args.value)
+  if multiline:
+    return [f'Browser: {flows_pb2.Browser.Name(b)}' for b in args.browsers]
+  return [','.join(flows_pb2.Browser.Name(b) for b in args.browsers)]
+
+
 _FLOW_ARGS_PARSING_FUNCTIONS = {
     'grr.FileFinderArgs': _FileFinderArgsParse,
     'grr.GetFileArgs': _GetFileArgsParse,
     'grr.TimelineArgs': _TimelineArgsParse,
     'grr.ArtifactCollectorFlowArgs': _ArtifactCollectorFlowArgsParse,
     'grr.CollectFilesByKnownPathArgs': _CollectFilesByKnownPathArgsParse,
+    'grr.CollectBrowserHistoryArgs': _CollectBrowserHistoryArgsParse,
 }
 
 

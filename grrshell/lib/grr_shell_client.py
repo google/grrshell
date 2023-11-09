@@ -351,6 +351,7 @@ class GRRShellClient:
     ff_flow = self._CreateFileFinderFlow(remote_path, flows_pb2.FileFinderAction.DOWNLOAD)
     future = self._collection_threads.submit(self._WaitAndCompleteFlow, ff_flow, local_path)
     self._launched_flows[ff_flow.flow_id] = _LaunchedFlow(future, ff_flow)
+    self._flow_monitor.TrackFlow(ff_flow)
 
     print(f'Started flow {ff_flow.flow_id}')
 
@@ -387,6 +388,7 @@ class GRRShellClient:
       logger.debug('Backgrounding flow %s', ac_flow.flow_id)
       future = self._collection_threads.submit(self._WaitAndCompleteFlow, ac_flow, local_path)
       self._launched_flows[ac_flow.flow_id] = _LaunchedFlow(future, ac_flow)
+      self._flow_monitor.TrackFlow(ac_flow)
       return []
 
     logger.debug('Synchronously waiting for flow %s', ac_flow.flow_id)

@@ -622,6 +622,9 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertTrue(os.path.exists(os.path.join(local_path, 'home', 'ramoj', 'tmp', 'derp')))
       self.assertFalse(os.path.exists(  # Temp dirs are cleaned up
           os.path.join(local_path, 'C.0000000000000001_flow_ClientFileFinder_CLIENTFILEFINDERRUNNINGFLOWID')))
+      self.assertIn('CLIENTFILEFINDERRUNNINGFLOWID', self.client._flow_monitor._flows)
+      self.assertEqual(self.client._flow_monitor._flows['CLIENTFILEFINDERRUNNINGFLOWID'],
+                       _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING)
 
   @mock.patch.object(futures.Future, 'exception', return_value=False)
   @mock.patch.object(futures.Future, 'running')
@@ -682,6 +685,9 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertTrue(os.path.exists(os.path.join(local_path, 'home', 'ramoj', 'tmp', 'derp')))
       self.assertFalse(os.path.exists(  # Temp dirs are cleaned up
           os.path.join(local_path, 'C.0000000000000001_flow_ArtifactCollectorFlow_ARTIFACTCOLLECTORFLOWRUNNINGFLOWID')))
+      self.assertIn('ARTIFACTCOLLECTORFLOWRUNNINGFLOWID', self.client._flow_monitor._flows)
+      self.assertEqual(self.client._flow_monitor._flows['ARTIFACTCOLLECTORFLOWRUNNINGFLOWID'],
+                       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING)
 
   def test_CollectFilesBadDirectory(self):
     """Tests collecting files fails when an invalid local path is used."""
@@ -866,6 +872,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     result = self.client._DetermineSourceForArtefact('Mixed')
 
     self.assertEqual(result, artifact_pb2.ArtifactSource.SourceType.FILE)
+
 
 class GrrShellClientWindowsTest(parameterized.TestCase):
   """Windows specific tests for the GRR Shell Client class."""
@@ -1340,6 +1347,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     result = self.client._DetermineSourceForArtefact('Mixed')
 
     self.assertEqual(result, artifact_pb2.ArtifactSource.SourceType.REGISTRY_VALUE)
+
 
 class GrrShellClientDarwinTest(parameterized.TestCase):
   """Dawin/MacOS specific tests for the GRR Shell Client class."""

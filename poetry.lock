@@ -350,28 +350,28 @@ graph = ["objgraph (>=1.7.2)"]
 
 [[package]]
 name = "grr-api-client"
-version = "3.4.6.post7"
+version = "3.4.7.post1"
 description = "GRR API client library"
 optional = false
 python-versions = "*"
 files = [
-    {file = "grr-api-client-3.4.6.post7.zip", hash = "sha256:ca352c26f3af49f6cf6c7cd3321f5352d9c71885c32121af2ecb406f2cf971c0"},
+    {file = "grr-api-client-3.4.7.post1.zip", hash = "sha256:e62f965abf940de71b9eb1a2589fbfe240b4d083f53f4e6533be9426baf91579"},
 ]
 
 [package.dependencies]
 cryptography = ">=3.3.2"
-grr_response_proto = "3.4.6post7"
+grr_response_proto = "3.4.7post1"
 requests = ">=2.25.1,<3"
 Werkzeug = ">=2.1.2,<3"
 
 [[package]]
 name = "grr-response-proto"
-version = "3.4.6.post7"
+version = "3.4.7.post1"
 description = "GRR API client library"
 optional = false
 python-versions = "*"
 files = [
-    {file = "grr-response-proto-3.4.6.post7.zip", hash = "sha256:e473afe7827d41db11eedf0e5f2e47cb75d69691a7c6613ccc28c320724df493"},
+    {file = "grr-response-proto-3.4.7.post1.zip", hash = "sha256:84d6ff957df4721e873e57766ef3b210323a22ce1638ce94159733358c522590"},
 ]
 
 [package.dependencies]

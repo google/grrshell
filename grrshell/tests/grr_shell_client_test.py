@@ -850,7 +850,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.assertIn(
         '\tGETFILERUNNINGFLOWID 1970-01-01T00:00:07Z GetFile C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier RUNNING',
         result)
-      self.assertIn('\tINTERROGATEFLOWID 1970-01-01T00:00:04Z Interrogate <UNSUPPORTED FLOW TYPE> RUNNING', result)
+      self.assertIn('\tINTERROGATEFLOWID 1970-01-01T00:00:04Z Interrogate  RUNNING', result)
       self.assertIn('\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow root: / RUNNING', result)
 
   @parameterized.named_parameters(

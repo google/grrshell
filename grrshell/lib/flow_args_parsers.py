@@ -74,12 +74,13 @@ def _CollectBrowserHistoryArgsParse(args: Any, multiline: bool) -> list[str]:
 
 
 _FLOW_ARGS_PARSING_FUNCTIONS = {
+    'grr.ArtifactCollectorFlowArgs': _ArtifactCollectorFlowArgsParse,
+    'grr.CollectBrowserHistoryArgs': _CollectBrowserHistoryArgsParse,
+    'grr.CollectFilesByKnownPathArgs': _CollectFilesByKnownPathArgsParse,
     'grr.FileFinderArgs': _FileFinderArgsParse,
     'grr.GetFileArgs': _GetFileArgsParse,
+    'grr.InterrogateArgs': lambda x, y: [''],
     'grr.TimelineArgs': _TimelineArgsParse,
-    'grr.ArtifactCollectorFlowArgs': _ArtifactCollectorFlowArgsParse,
-    'grr.CollectFilesByKnownPathArgs': _CollectFilesByKnownPathArgsParse,
-    'grr.CollectBrowserHistoryArgs': _CollectBrowserHistoryArgsParse,
 }
 
 

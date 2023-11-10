@@ -71,7 +71,7 @@ _MOCK_APIFLOW_INTERROGATE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_int
 _MOCK_APIFLOW_INTERROGATE = flow.Flow(
     data=text_format.Parse(open(_MOCK_APIFLOW_INTERROGATE_PROTO_FILE, 'rb').read().decode('utf-8'), flow_pb2.ApiFlow()),
     context=mock.MagicMock())
-_MOCK_APIFLOW_INTERROGATE_EXPECTED = ['<UNSUPPORTED FLOW TYPE>']
+_MOCK_APIFLOW_INTERROGATE_EXPECTED = ['']
 
 _MOCK_APIFLOW_COLLECTFILES_SINGLE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_collectfilesbyknownpath_single.textproto'
 _MOCK_APIFLOW_COLLECTFILES_SINGLE = flow.Flow(

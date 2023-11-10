@@ -45,7 +45,13 @@ from grrshell.lib import utils
 
 _STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=12)
 _ROOT_TIMELINE_REGEX = r'/|(?:/?)[A-Z]:[/\\]'
-_RESUMABLE_FLOW_TYPES = ('ClientFileFinder', 'ArtifactCollectorFlow', 'GetFile')
+
+_RESUMABLE_FLOW_TYPES = frozenset((
+    'ClientFileFinder',
+    'ArtifactCollectorFlow',
+    'GetFile',
+    'CollectFilesByKnownPath'
+))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
     artifact_pb2.ArtifactSource.SourceType.ARTIFACT_FILES,
@@ -762,6 +768,8 @@ class GRRShellClient:
     """
     if flow_handle.data.name == 'GetFile':
       return True
+    if flow_handle.data.name == 'CollectFilesByKnownPath':
+      return False
     if flow_handle.data.name == 'ArtifactCollectorFlow':
       acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(flow_handle.data.args.value)
 

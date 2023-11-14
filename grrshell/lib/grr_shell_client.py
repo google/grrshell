@@ -50,7 +50,8 @@ _RESUMABLE_FLOW_TYPES = frozenset((
     'ClientFileFinder',
     'ArtifactCollectorFlow',
     'GetFile',
-    'CollectFilesByKnownPath'
+    'CollectFilesByKnownPath',
+    'CollectBrowserHistory'
 ))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
@@ -734,7 +735,11 @@ class GRRShellClient:
           logger.debug('Moving %s to %s', extracted_file, dest_file_path)
           shutil.move(extracted_file, dest_file_path)
 
-        shutil.rmtree(os.path.join(local_path, zip_root_dir))
+        try:
+          shutil.rmtree(os.path.join(local_path, zip_root_dir))
+        except FileNotFoundError:
+          # Failing to remove something that doesn't exist is fine.
+          pass
 
   def _CreateOutputDir(self, local_path: str) -> None:
     """Creates a directory for collected file output.
@@ -768,7 +773,7 @@ class GRRShellClient:
     """
     if flow_handle.data.name == 'GetFile':
       return True
-    if flow_handle.data.name == 'CollectFilesByKnownPath':
+    if flow_handle.data.name in ('CollectFilesByKnownPath', 'CollectBrowserHistory'):
       return False
     if flow_handle.data.name == 'ArtifactCollectorFlow':
       acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(flow_handle.data.args.value)

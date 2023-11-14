@@ -1,0 +1,17 @@
+# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/COLLECTBROWSERHISTORYRUNNINGFLOWID"
+name: "CollectFilesByKnownPath"
+args {
+  [type.googleapis.com/grr.CollectBrowserHistoryArgs] {
+    browsers: [
+      FIREFOX,
+      CHROME,
+      INTERNET_EXPLORER
+    ]
+  }
+}
+state: RUNNING
+flow_id: "COLLECTBROWSERHISTORYRUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 8000000  # 8 seconds past epoch

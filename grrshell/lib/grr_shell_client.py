@@ -45,7 +45,14 @@ from grrshell.lib import utils
 
 _STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=12)
 _ROOT_TIMELINE_REGEX = r'/|(?:/?)[A-Z]:[/\\]'
-_RESUMABLE_FLOW_TYPES = ('ClientFileFinder', 'ArtifactCollectorFlow', 'GetFile')
+
+_RESUMABLE_FLOW_TYPES = frozenset((
+    'ClientFileFinder',
+    'ArtifactCollectorFlow',
+    'GetFile',
+    'CollectFilesByKnownPath',
+    'CollectBrowserHistory'
+))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
     artifact_pb2.ArtifactSource.SourceType.ARTIFACT_FILES,
@@ -351,6 +358,7 @@ class GRRShellClient:
     ff_flow = self._CreateFileFinderFlow(remote_path, flows_pb2.FileFinderAction.DOWNLOAD)
     future = self._collection_threads.submit(self._WaitAndCompleteFlow, ff_flow, local_path)
     self._launched_flows[ff_flow.flow_id] = _LaunchedFlow(future, ff_flow)
+    self._flow_monitor.TrackFlow(ff_flow)
 
     print(f'Started flow {ff_flow.flow_id}')
 
@@ -387,6 +395,7 @@ class GRRShellClient:
       logger.debug('Backgrounding flow %s', ac_flow.flow_id)
       future = self._collection_threads.submit(self._WaitAndCompleteFlow, ac_flow, local_path)
       self._launched_flows[ac_flow.flow_id] = _LaunchedFlow(future, ac_flow)
+      self._flow_monitor.TrackFlow(ac_flow)
       return []
 
     logger.debug('Synchronously waiting for flow %s', ac_flow.flow_id)
@@ -726,7 +735,11 @@ class GRRShellClient:
           logger.debug('Moving %s to %s', extracted_file, dest_file_path)
           shutil.move(extracted_file, dest_file_path)
 
-        shutil.rmtree(os.path.join(local_path, zip_root_dir))
+        try:
+          shutil.rmtree(os.path.join(local_path, zip_root_dir))
+        except FileNotFoundError:
+          # Failing to remove something that doesn't exist is fine.
+          pass
 
   def _CreateOutputDir(self, local_path: str) -> None:
     """Creates a directory for collected file output.
@@ -760,6 +773,8 @@ class GRRShellClient:
     """
     if flow_handle.data.name == 'GetFile':
       return True
+    if flow_handle.data.name in ('CollectFilesByKnownPath', 'CollectBrowserHistory'):
+      return False
     if flow_handle.data.name == 'ArtifactCollectorFlow':
       acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(flow_handle.data.args.value)
 

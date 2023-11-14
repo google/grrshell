@@ -124,6 +124,11 @@ class FlowMonitor(_MonitorBase):
     with self._mutex:
       return self._flows[flow_id]
 
+  def TrackFlow(self, flow_handle: flow.Flow) -> None:
+    """Adds a launched flow to monitoring."""
+    with self._mutex:
+      self._flows[flow_handle.flow_id] = flow_handle
+
   def _UpdateCachedFlow(self, flow_id: str) -> None:
     """Fetches and caches info for a single flow."""
     if (flow_id not in self._flows or

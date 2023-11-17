@@ -1,8 +1,6 @@
 name: Publish distribution to Pypi
 
 on:
-#  release:
-#    types: [published]
   pull_request:
     types: [opened, synchronize, reopened]
     
@@ -28,18 +26,15 @@ jobs:
         path: dist/
 
 
-
-        
-  publish-to-testpypi:
-    name: Publish Python distribution to TestPyPI
+  publish-to-pypi:
+    name: Publish Python distribution to PyPI
+#    if: startsWith(github.ref, 'refs/tags/20')  # only publish to PyPI on tag pushes
     needs:
     - build
     runs-on: ubuntu-latest
-
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/grrshell
-
+      name: release
+      url: https://pypi.org/p/grrshell
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -49,7 +44,5 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Publish distribution to TestPyPI
+    - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/

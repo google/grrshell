@@ -1,4 +1,4 @@
-name: Publish Python distribution to PyPI and TestPyPI
+name: Publish Python distribution to PyPI
 
 on: push
 
@@ -14,8 +14,7 @@ jobs:
       with:
         python-version: "3.10"
     - name: Install pypa/build
-      run: |
-        pip install poetry
+      run: pip install poetry
     - name: Build a binary wheel and a source tarball
       run: poetry build
     - name: Store the distribution packages

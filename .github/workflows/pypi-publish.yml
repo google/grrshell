@@ -1,0 +1,55 @@
+name: Publish distribution to Pypi
+
+on:
+#  release:
+#    types: [published]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install poetry
+      run: pip install poetry
+    - name: Build a binary wheel and a source tarball
+      run: poetry build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+
+
+
+        
+  publish-to-testpypi:
+    name: Publish Python distribution to TestPyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: release
+      url: https://test.pypi.org/p/grrshell
+
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/

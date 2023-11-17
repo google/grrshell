@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grrshell"
-version = "0.1.0"
+version = "20231117"
 description = ""
 authors = ["Ramo <ramoj@google.com>"]
 readme = "README.md"

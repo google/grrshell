@@ -13,6 +13,8 @@
 # limitations under the License.
 """Unit tests for the Grr Shell Emulated FS class."""
 
+from typing import Optional
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -416,7 +418,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
       ('slash_usr', '/usr', ['.', 'bin']),
       ('file', '/usr/bin/clang', ['clang']),
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 

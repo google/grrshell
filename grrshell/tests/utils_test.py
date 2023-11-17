@@ -13,10 +13,10 @@
 # limitations under the License.
 """Unit tests for util methods."""
 
+from typing import Union
+
 from absl.testing import absltest
 from absl.testing import parameterized
-
-from typing import Union
 
 from grrshell.lib import utils
 

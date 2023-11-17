@@ -210,8 +210,8 @@ class GRRShellClient:
     return latest_timeline
 
   def CollectTimeline(self,
-                      path: str | None = None,
-                      existing_timeline: str | None = None) -> str:
+                      path: Optional[str] = None,
+                      existing_timeline: Optional[str] = None) -> str:
     """Creates and waits for a GRR timeline flow.
 
     Args:
@@ -481,7 +481,7 @@ class GRRShellClient:
 
   def ResumeFlow(self,
                  flow_id: str,
-                 local_path: str | None = None) -> list[str]:
+                 local_path: Optional[str] = None) -> list[str]:
     """Resumes an existing flow, not attached to this GRRShell session.
 
     Adds the existing launched flow to the background flows.

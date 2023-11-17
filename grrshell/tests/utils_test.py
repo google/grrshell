@@ -13,6 +13,8 @@
 # limitations under the License.
 """Unit tests for util methods."""
 
+from typing import Union
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -28,7 +30,7 @@ class UnixTSToReadableTest(parameterized.TestCase):
       ('from_float', 75.1234, '1970-01-01T00:01:15Z')
   )
   def test_UnixTSToReadable(self,
-                            ts_in: int | float,
+                            ts_in: Union[int, float],
                             expected: str):
     """Tests the UnixTSToReadable method."""
     result = utils.UnixTSToReadable(ts_in)

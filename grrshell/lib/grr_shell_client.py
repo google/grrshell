@@ -24,7 +24,7 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Iterator
+from typing import Iterator, Optional
 import zipfile
 
 from absl import logging
@@ -145,10 +145,12 @@ class GRRShellClient:
     logger.debug('ThreadPoolExecutor shutdown completed.')
 
     for launched in self._launched_flows.values():
-      if launched.future.exception():
+      error = launched.future.exception()
+      if error:
         logger.debug('Flow %s encountered exception:\n%s',
                      launched.flow.flow_id,
-                     ''.join(traceback.format_exception(launched.future.exception())))
+                     ''.join(traceback.format_exception(error, error,
+                                                        error.__traceback__)))
         if not launched.exception_displayed:
           print(f'{launched.flow.flow_id} - {str(launched.future.exception())}')
 
@@ -185,7 +187,7 @@ class GRRShellClient:
       for name in self._artefacts:
         yield name
 
-  def GetLastTimeline(self) -> str | None:
+  def GetLastTimeline(self) -> Optional[str]:
     """Returns the Flow ID of the most recent root timeline that is not stale.
 
     Returns:
@@ -210,8 +212,8 @@ class GRRShellClient:
     return latest_timeline
 
   def CollectTimeline(self,
-                      path: str | None = None,
-                      existing_timeline: str | None = None) -> str:
+                      path: Optional[str] = None,
+                      existing_timeline: Optional[str] = None) -> str:
     """Creates and waits for a GRR timeline flow.
 
     Args:
@@ -481,7 +483,7 @@ class GRRShellClient:
 
   def ResumeFlow(self,
                  flow_id: str,
-                 local_path: str | None = None) -> list[str]:
+                 local_path: Optional[str] = None) -> list[str]:
     """Resumes an existing flow, not attached to this GRRShell session.
 
     Adds the existing launched flow to the background flows.

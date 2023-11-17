@@ -13,6 +13,8 @@
 # limitations under the License.
 """Unit tests for the Grr Shell Emulated FS class."""
 
+from typing import Optional
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -134,7 +136,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
       ('glob_subdir', '/root/*e*', ['.augeas', '.cache', 'directory with spaces', '.lesshst', '.profile', '.wget-hsts', 'dead.letter',
                                     'xorg.conf.new'])
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 
@@ -293,7 +295,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
       ('glob_subdir', 'C:/*e*', ['$Recycle.Bin', '$WinREAgent', 'hiberfil.sys', 'Documents and Settings',
                                  'pagefile.sys', 'PerfLogs', 'Program Files'])
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 
@@ -416,7 +418,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
       ('slash_usr', '/usr', ['.', 'bin']),
       ('file', '/usr/bin/clang', ['clang']),
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 

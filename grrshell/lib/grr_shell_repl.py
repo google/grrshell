@@ -302,7 +302,7 @@ class GRRShellREPL:
 
   def _RefreshTimeline(self,
                        path: str = '/',
-                       existing_timeline: str | None = None) -> None:
+                       existing_timeline: Optional[str] = None) -> None:
     """(Re)collects a filesystem timeline from the client.
 
     Args:

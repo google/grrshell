@@ -145,10 +145,12 @@ class GRRShellClient:
     logger.debug('ThreadPoolExecutor shutdown completed.')
 
     for launched in self._launched_flows.values():
-      if launched.future.exception():
+      error = launched.future.exception()
+      if error:
         logger.debug('Flow %s encountered exception:\n%s',
                      launched.flow.flow_id,
-                     ''.join(traceback.format_exception(launched.future.exception())))
+                     ''.join(traceback.format_exception(error, error,
+                                                        error.__traceback__)))
         if not launched.exception_displayed:
           print(f'{launched.flow.flow_id} - {str(launched.future.exception())}')
 

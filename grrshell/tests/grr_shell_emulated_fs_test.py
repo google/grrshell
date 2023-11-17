@@ -295,7 +295,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
       ('glob_subdir', 'C:/*e*', ['$Recycle.Bin', '$WinREAgent', 'hiberfil.sys', 'Documents and Settings',
                                  'pagefile.sys', 'PerfLogs', 'Program Files'])
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 

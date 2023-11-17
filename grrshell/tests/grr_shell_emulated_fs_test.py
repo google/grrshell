@@ -136,7 +136,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
       ('glob_subdir', '/root/*e*', ['.augeas', '.cache', 'directory with spaces', '.lesshst', '.profile', '.wget-hsts', 'dead.letter',
                                     'xorg.conf.new'])
   )
-  def test_LS(self, path: str | None, expected_results: list[str]):
+  def test_LS(self, path: Optional[str], expected_results: list[str]):
     """Tests the LS method."""
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
 

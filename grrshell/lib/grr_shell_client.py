@@ -24,7 +24,7 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Iterator
+from typing import Iterator, Optional
 import zipfile
 
 from absl import logging
@@ -185,7 +185,7 @@ class GRRShellClient:
       for name in self._artefacts:
         yield name
 
-  def GetLastTimeline(self) -> str | None:
+  def GetLastTimeline(self) -> Optional[str]:
     """Returns the Flow ID of the most recent root timeline that is not stale.
 
     Returns:

@@ -17,7 +17,7 @@ import dataclasses
 import fnmatch
 import os
 import re
-from typing import cast, Union
+from typing import cast, Union, Optional
 
 from absl import logging
 import humanize
@@ -226,8 +226,8 @@ class GrrShellEmulatedFS:
       return False
 
   def Ls(self,
-         path: str | None = None,
-         sortkey: str | None = None,
+         path: Optional[str] = None,
+         sortkey: Optional[str] = None,
          ascending: bool = True) -> list[_LSEntry]:
     """Returns a list of ls entries for a path.
 

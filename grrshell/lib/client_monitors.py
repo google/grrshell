@@ -22,8 +22,8 @@ from typing import Iterator
 
 from absl import logging
 
-from grr_api_client import api as grr_api
 from grr_api_client import flow
+from grr_api_client import api as grr_api
 from grr_response_proto import flows_pb2
 
 
@@ -63,7 +63,7 @@ class LastSeenMonitor(_MonitorBase):
     """Initialises the Monitor."""
     super().__init__()
     self._last_seen: datetime.datetime
-    self._grr_client: grr_api.client.ClientRef = grr_client
+    self._grr_client = grr_client
 
   def _SingleFetch(self):
     """Caches the LastSeen time of the client."""
@@ -88,7 +88,7 @@ class FlowMonitor(_MonitorBase):
   def __init__(self, grr_client: grr_api.client.ClientRef):
     """Initialises the FlowMonitor."""
     super().__init__()
-    self._grr_client: grr_api.client.ClientRef = grr_client
+    self._grr_client = grr_client
     self._flows: dict[str, flow.Flow] = {}
 
   def _Monitor(self):

@@ -106,7 +106,6 @@ class GRRShellClient:
     self._collection_threads = futures.ThreadPoolExecutor(max_workers=40)
 
     self._grr_stubby = grr_api.InitHttp(api_endpoint=grr_server, auth=(grr_user, grr_pass))
-
     self._grr_client_id = self._ResolveClientID(client_id)
     self._grr_client = self._grr_stubby.Client(self._grr_client_id)
     self._os: str = None
@@ -118,28 +117,32 @@ class GRRShellClient:
     try:
       self._grr_client.VerifyAccess()
     except grr_errors.AccessForbiddenError as exc:
-      raise errors.NoGRRApprovalError(f'No approval for client access to {self._grr_client_id}') from exc
+      raise errors.NoGRRApprovalError(
+          f'No approval for client access to {self._grr_client_id}') from exc
 
     self._artefact_list_mutex: threading.Lock = threading.Lock()
-    threading.Thread(target=self._RetrieveSupportedArtefacts, daemon=True).start()
+    threading.Thread(
+        target=self._RetrieveSupportedArtefacts, daemon=True).start()
 
-    self._flow_monitor = client_monitors.FlowMonitor(self._grr_stubby.Client(self._grr_client_id))
+    self._flow_monitor = client_monitors.FlowMonitor(
+        self._grr_stubby.Client(self._grr_client_id))
     self._flow_monitor.StartMonitor()
 
-    self._last_seen_monitor = client_monitors.LastSeenMonitor(self._grr_stubby.Client(self._grr_client_id))
+    self._last_seen_monitor = client_monitors.LastSeenMonitor(
+        self._grr_stubby.Client(self._grr_client_id))
     self._last_seen_monitor.StartMonitor()
 
   def WaitForBackgroundCompletions(self):
-    """Destructor for GRRShellClient.
-
-    Waits for any launched flows to complete before exiting.
-    """
+    """Finish pending background flows."""
     logger.debug('GRRShellClient WaitForBackgroundCompletions')
 
     if any(f.future.running() for f in self._launched_flows.values()):
-      pending_flows = ', '.join(f.flow.flow_id for f in self._launched_flows.values() if f.future.running())
+      pending_flows = ', '.join(
+          f.flow.flow_id for f in self._launched_flows.values()
+          if f.future.running())
       logger.debug('Waiting on flows to finish: %s', pending_flows)
-      print(f'Waiting for collection threads {pending_flows} to finish (<CTRL+C> to force exit)')
+      print(f'Waiting for collection threads {pending_flows} to finish '
+            '(<CTRL+C> to force exit)')
 
     self._collection_threads.shutdown()
     logger.debug('ThreadPoolExecutor shutdown completed.')
@@ -196,13 +199,17 @@ class GRRShellClient:
     """
     flows = self._grr_client.ListFlows()
     latest_timeline = None
-    latest_timestamp = (time.time() - _STALE_TIMELINE_THRESHOLD.total_seconds()) * 1000000
+    latest_timestamp = (
+        time.time() - _STALE_TIMELINE_THRESHOLD.total_seconds()
+    ) * 1000000
     for f in flows:
       if f.data.state != flows_pb2.FlowContext.TERMINATED:
         continue
       if f.data.name != 'TimelineFlow':
         continue
-      if not re.fullmatch(_ROOT_TIMELINE_REGEX, str(f.Get().args.root, 'utf-8')):
+      if not re.fullmatch(
+          _ROOT_TIMELINE_REGEX, str(f.Get().args.root, 'utf-8')
+      ):
         continue
       for result in f.ListResults():
         if result.timestamp > latest_timestamp:
@@ -233,10 +240,12 @@ class GRRShellClient:
       flow_args = self._grr_stubby.types.CreateFlowArgs('TimelineFlow')
       flow_args.root = b'/'
       if path:
-        if self.GetOS() == utils.WINDOWS and path.startswith('/') and len(path) > 1:
+        if (self.GetOS() == utils.WINDOWS and
+            path.startswith('/') and len(path) > 1):
           path = path[1:]
         flow_args.root = bytes(path, 'utf-8')
-      flow_handle = self._grr_client.CreateFlow(name='TimelineFlow', args=flow_args)
+      flow_handle = self._grr_client.CreateFlow(name='TimelineFlow',
+                                                args=flow_args)
       msg = f'Running timeline flow {flow_handle.flow_id}'
       print(msg)
       logger.debug(msg)
@@ -257,9 +266,7 @@ class GRRShellClient:
 
     return io_stream.getvalue().decode()
 
-  def FileInfo(self,
-               remote_path: str,
-               collect_ads: bool = False) -> str:
+  def FileInfo(self, remote_path: str, collect_ads: bool = False) -> str:
     """Synchronously collects file info and hashes for remote files.
 
     Also attempts to collect the "Zone.Identifier" Alternate Data Stream for
@@ -277,27 +284,33 @@ class GRRShellClient:
     if self.GetOS() == utils.WINDOWS and remote_path.startswith('/'):
       remote_path = remote_path[1:]
 
-    collect_ads = collect_ads and self.GetOS() == utils.WINDOWS and '*' not in remote_path
+    collect_ads = (collect_ads and
+                   self.GetOS() == utils.WINDOWS and
+                   '*' not in remote_path)
     zone_ads_result = ''
 
-    hash_flow_handle = self._CreateFileFinderFlow(remote_path, flows_pb2.FileFinderAction.HASH)
+    hash_flow_handle = self._CreateFileFinderFlow(
+        remote_path, flows_pb2.FileFinderAction.HASH)
     print(f'Running Hash flow {hash_flow_handle.flow_id}')
 
     if collect_ads:
       ads_flow_handle = self._CreateADSCollectionFlow(remote_path)
-      print(f'Running ADS (Zone.Identifier) collection flow {ads_flow_handle.flow_id}')
+      print('Running ADS (Zone.Identifier) collection flow '
+            f'{ads_flow_handle.flow_id}')
       try:
         ads_flow_handle.WaitUntilDone()
         zone_ads_result = self._formatter.FormatFlowResult(ads_flow_handle)
       except grr_errors.FlowFailedError as error:
-        msg = f'ADS Flow collection {ads_flow_handle.flow_id} failed: {str(error)}'
+        msg = (f'ADS Flow collection {ads_flow_handle.flow_id} failed: '
+               f'{str(error)}')
         logger.debug(msg, exc_info=True)
         print(msg)
 
     try:
       hash_flow_handle.WaitUntilDone()
     except grr_errors.FlowFailedError as error:
-      msg = f'HASH Flow collection {hash_flow_handle.flow_id} failed: {str(error)}'
+      msg = (f'HASH Flow collection {hash_flow_handle.flow_id} failed: '
+             f'{str(error)}')
       logger.debug(msg, exc_info=True)
       print(msg)
       return ''
@@ -308,9 +321,7 @@ class GRRShellClient:
 
     return '\n'.join(lines)
 
-  def CollectFiles(self,
-                   remote_path: str,
-                   local_path: str) -> None:
+  def CollectFiles(self, remote_path: str, local_path: str) -> None:
     """Collects files from the remote client.
 
     Args:
@@ -322,7 +333,8 @@ class GRRShellClient:
 
     print(f'Collecting files: {remote_path}')
 
-    ff_flow = self._CreateFileFinderFlow(remote_path, flows_pb2.FileFinderAction.DOWNLOAD)
+    ff_flow = self._CreateFileFinderFlow(remote_path,
+                                         flows_pb2.FileFinderAction.DOWNLOAD)
     print(f'Started flow {ff_flow.flow_id}')
 
     self._WaitAndCompleteFlow(ff_flow, local_path)
@@ -345,9 +357,7 @@ class GRRShellClient:
 
     self._WaitAndCompleteFlow(ac_flow, local_path)
 
-  def CollectFilesInBackground(self,
-                               remote_path: str,
-                               local_path: str) -> None:
+  def CollectFilesInBackground(self, remote_path: str, local_path: str) -> None:
     """Asynchronously collects files from the remote client.
 
     Args:
@@ -357,8 +367,10 @@ class GRRShellClient:
     print(f'Collecting files: {remote_path}')
     logger.debug('Launching background ClientFileFinder flow')
 
-    ff_flow = self._CreateFileFinderFlow(remote_path, flows_pb2.FileFinderAction.DOWNLOAD)
-    future = self._collection_threads.submit(self._WaitAndCompleteFlow, ff_flow, local_path)
+    ff_flow = self._CreateFileFinderFlow(remote_path,
+                                         flows_pb2.FileFinderAction.DOWNLOAD)
+    future = self._collection_threads.submit(
+        self._WaitAndCompleteFlow, ff_flow, local_path)
     self._launched_flows[ff_flow.flow_id] = _LaunchedFlow(future, ff_flow)
     self._flow_monitor.TrackFlow(ff_flow)
 
@@ -368,7 +380,7 @@ class GRRShellClient:
     """Collects an artefact from the client.
 
     Artefacts that collect files from the client are performed in the
-    background. Other artfacts run synchronously and display the output to the
+    background. Other artefacts run synchronously and display the output to the
     operator.
 
     Args:
@@ -383,8 +395,10 @@ class GRRShellClient:
     """
     source_type = self._DetermineSourceForArtefact(artefact)
 
-    if not any((source_type in _BACKGROUND_ARTEFACT_TYPES, source_type in _SYNCHRONOUS_ARTEFACT_TYPES)):
-      raise RuntimeError('Unsupported artefact type! Consider raising a bug: https://github.com/google/grrshell/issues/new')
+    if not any((source_type in _BACKGROUND_ARTEFACT_TYPES,
+                source_type in _SYNCHRONOUS_ARTEFACT_TYPES)):
+      raise RuntimeError(
+          'Unsupported artefact type! Consider raising a bug: https://github.com/google/grrshell/issues/new')
 
     print(f'Collecting artefact: {artefact}')
     logger.debug('Launching ArtifactCollectorFlow flow')
@@ -395,11 +409,11 @@ class GRRShellClient:
 
     if source_type in _BACKGROUND_ARTEFACT_TYPES:
       logger.debug('Backgrounding flow %s', ac_flow.flow_id)
-      future = self._collection_threads.submit(self._WaitAndCompleteFlow, ac_flow, local_path)
+      future = self._collection_threads.submit(
+          self._WaitAndCompleteFlow, ac_flow, local_path)
       self._launched_flows[ac_flow.flow_id] = _LaunchedFlow(future, ac_flow)
       self._flow_monitor.TrackFlow(ac_flow)
       return []
-
     logger.debug('Synchronously waiting for flow %s', ac_flow.flow_id)
     ac_flow.WaitUntilDone()
     return self._formatter.FormatFlowResult(ac_flow)
@@ -438,7 +452,9 @@ class GRRShellClient:
         error_msg = f' "{str(bg_flow.future.exception())}"'
         bg_flow.exception_displayed = True
 
-      to_return.append(f'\t{bg_flow.flow.flow_id} {bg_flow.flow.data.name} {param} {state}{error_msg}')
+      to_return.append(
+          f'\t{bg_flow.flow.flow_id} {bg_flow.flow.data.name} {param} '
+          f'{state}{error_msg}')
 
     return '\n'.join(to_return)
 
@@ -450,7 +466,8 @@ class GRRShellClient:
         * The number of flows currently running.
         * The total number of background flows launched.
     """
-    running = sum((1 for f in self._launched_flows.values() if f.future.running()))
+    running = sum(
+        (1 for f in self._launched_flows.values() if f.future.running()))
     return running, len(self._launched_flows)
 
   def SetMaxFilesize(self, size: int) -> None:
@@ -465,7 +482,7 @@ class GRRShellClient:
     """Lists flow details for flows launched on the client.
 
     Includes all flows, not just those launched by GRRShell.
-    
+
     Args:
       count: Max number of flows to detail.
 
@@ -476,9 +493,11 @@ class GRRShellClient:
     flows = self._flow_monitor.GetFlowsInfoList(count=count)
 
     for flow_handle in flows:
-      lines.append(f'\t{flow_handle.flow_id} {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)} '
-                   f'{flow_handle.data.name} {flow_args_parsers.Parse(flow_handle)[0]} '
-                   f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
+      lines.append(
+          f'\t{flow_handle.flow_id} '
+          f'{utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)} '
+          f'{flow_handle.data.name} {flow_args_parsers.Parse(flow_handle)[0]} '
+          f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
     return '\n'.join(lines)
 
   def ResumeFlow(self,
@@ -503,7 +522,8 @@ class GRRShellClient:
 
     if flow_handle.data.name not in _RESUMABLE_FLOW_TYPES:
       raise errors.NotResumeableFlowTypeError(
-        f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, not supported for resumption.')
+          f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, '
+          'not supported for resumption.')
 
     if flow_handle.flow_id in self._launched_flows:
       return [f'{flow_handle.flow_id} already tracked by this GRRShell session']
@@ -513,8 +533,10 @@ class GRRShellClient:
       lines = self._formatter.FormatFlowResult(flow_handle)
       return lines
 
-    future = self._collection_threads.submit(self._WaitAndCompleteFlow, flow_handle, local_path)
-    self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future, flow_handle)
+    future = self._collection_threads.submit(
+        self._WaitAndCompleteFlow, flow_handle, local_path)
+    self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future,
+                                                              flow_handle)
     return [f'Queued {flow_handle.flow_id} for completion.']
 
   def FlowDetail(self, flow_id: str) -> str:
@@ -533,24 +555,33 @@ class GRRShellClient:
     lines: list[str] = [
         flow_handle.data.name,
         f'\tCreator     {flow_handle.data.creator}',
-        f'\tState       {flows_pb2.FlowContext.State.Name(flow_handle.data.state)}',
-        f'\tStarted     {utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)}',
-        f'\tLast Active {utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)}',
+        ('\tState       ' +
+         flows_pb2.FlowContext.State.Name(flow_handle.data.state)),
+        ('\tStarted     ' +
+         utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)),
+        ('\tLast Active ' +
+         utils.UnixTSToReadable(flow_handle.data.last_active_at / 1000000)),
         '\tArgs:']
+
     for l in flow_args_parsers.Parse(flow_handle, True):
       lines.append(f'\t            {l}')
 
     if flow_handle.data.state == flows_pb2.FlowContext.ERROR:
       # We need to manually parse out the error message :(
-      status_lines = [l.strip() for l in flow_handle.data.context.status.splitlines()]
+      status_lines = [l.strip()
+                      for l in flow_handle.data.context.status.splitlines()]
       if flow_handle.data.context.status:
         if 'error_message' in flow_handle.data.context.status:
-          error_message = [l.replace('error_message : ', '') for l in status_lines if l.startswith('error_message : ')][0]
+          error_message = [
+              l.replace('error_message : ', '') for l in status_lines
+              if l.startswith('error_message : ')][0]
           error_message = f'\t\t{error_message}'
         else:
           error_message = f'\t\t{flow_handle.data.context.status}'
       elif flow_handle.data.error_description:
-        error_message = '\n'.join([f'\t\t{line}' for line in flow_handle.data.error_description.splitlines()])
+        error_message = '\n'.join([
+            f'\t\t{line}'
+            for line in flow_handle.data.error_description.splitlines()])
       else:
         error_message = '\t\tMissing error message'
 
@@ -580,8 +611,11 @@ class GRRShellClient:
       return results[0].client_id
 
     logger.debug('%d potential clients found', len(results))
-    logger.debug('Potential clients: %s', ', '.join([r.client_id for r in results]))
-    raise errors.ClientNotFoundError(f'{len(results)} potential clients found with search {client_id}. Specify a client ID instead.')
+    logger.debug(
+        'Potential clients: %s', ', '.join([r.client_id for r in results]))
+    raise errors.ClientNotFoundError(
+        f'{len(results)} potential clients found with search {client_id}. '
+        'Specify a client ID instead.')
 
   def _RetrieveSupportedArtefacts(self) -> None:
     """Collects and caches a list of supported artefacts for the client."""
@@ -591,11 +625,13 @@ class GRRShellClient:
         for a in self._grr_stubby.ListArtifacts():
           if self.GetOS() in a.data.artifact.supported_os:
             self._artefacts[a.data.artifact.name] = a
-        logger.debug('%d supported artefacts collected', len(self._artefacts))
+        logger.debug('%d supported artefacts collected',
+                     len(self._artefacts))
 
   def _CreateFileFinderFlow(self,
                             remote_path: str,
-                            action: flows_pb2.FileFinderAction.Action) -> flow.Flow:
+                            action: flows_pb2.FileFinderAction.Action
+                            ) -> flow.Flow:
     """Launches a FileFinder flow.
 
     Args:
@@ -607,7 +643,8 @@ class GRRShellClient:
     """
     logger.debug('Launching a ClientFileFinder flow')
 
-    flow_args: flows_pb2.FileFinderArgs = self._grr_stubby.types.CreateFlowArgs('ClientFileFinder')
+    flow_args: flows_pb2.FileFinderArgs = (
+        self._grr_stubby.types.CreateFlowArgs('ClientFileFinder'))
 
     if self.GetOS() == utils.WINDOWS:
       flow_args.pathtype = jobs_pb2.PathSpec.NTFS
@@ -624,7 +661,8 @@ class GRRShellClient:
       elif action == flows_pb2.FileFinderAction.DOWNLOAD:
         flow_args.action.download.max_size = self._max_collect_size
 
-    ff_flow = self._grr_client.CreateFlow(name='ClientFileFinder', args=flow_args)
+    ff_flow = self._grr_client.CreateFlow(name='ClientFileFinder',
+                                          args=flow_args)
 
     logger.debug('Launched flow %s', ff_flow.flow_id)
     logger.debug('Flow args: %s', ff_flow.data)
@@ -637,7 +675,8 @@ class GRRShellClient:
         pathspec=jobs_pb2.PathSpec(path=remote_path,
                                    pathtype=jobs_pb2.PathSpec.NTFS,
                                    stream_name='Zone.Identifier'))
-    ads_flow = self._grr_client.CreateFlow(name='GetFile', args=flow_args)
+    ads_flow = self._grr_client.CreateFlow(name='GetFile',
+                                           args=flow_args)
 
     logger.debug('Launched flow %s', ads_flow.flow_id)
     logger.debug('Flow args: %s', ads_flow.data)
@@ -655,14 +694,16 @@ class GRRShellClient:
     """
     logger.debug('Launching a ArtifactCollectorFlow flow')
 
-    flow_args: flows_pb2.ArtifactCollectorFlowArgs = self._grr_stubby.types.CreateFlowArgs('ArtifactCollectorFlow')
+    flow_args: flows_pb2.ArtifactCollectorFlowArgs = (
+        self._grr_stubby.types.CreateFlowArgs('ArtifactCollectorFlow'))
     flow_args.artifact_list.append(artefact)
     flow_args.use_raw_filesystem_access = self.GetOS() == utils.WINDOWS
     flow_args.apply_parsers = False
     if self._max_collect_size:
       flow_args.max_file_size = self._max_collect_size
 
-    ac_flow = self._grr_client.CreateFlow(name='ArtifactCollectorFlow', args=flow_args)
+    ac_flow = self._grr_client.CreateFlow(name='ArtifactCollectorFlow',
+                                          args=flow_args)
 
     logger.debug('Launched flow %s', ac_flow.flow_id)
     logger.debug('Flow args: %s', ac_flow.data)
@@ -693,9 +734,7 @@ class GRRShellClient:
 
     self._ExportFlowResults(ff_flow, local_path)
 
-  def _ExportFlowResults(self,
-                         ff_flow: flow.Flow,
-                         local_path: str) -> None:
+  def _ExportFlowResults(self, ff_flow: flow.Flow, local_path: str) -> None:
     """Writes the results of a flow to disk.
 
     Args:
@@ -709,27 +748,32 @@ class GRRShellClient:
     os_base = 'ntfs' if self.GetOS() == utils.WINDOWS else 'os'
 
     if not list(ff_flow.ListResults()):
-      raise errors.InvalidRemotePathError(f'No FileFinder results for {ff_flow.flow_id}')
+      raise errors.InvalidRemotePathError(
+          f'No FileFinder results for {ff_flow.flow_id}')
 
     with tempfile.NamedTemporaryFile(mode='wb+') as fp:
       logger.debug('Writing zip file for %s to %s', ff_flow.flow_id, fp.name)
       for chunk in ff_flow.GetFilesArchive():
         fp.write(chunk)
 
-      logger.debug('Extracting zip file for %s to %s', ff_flow.flow_id, local_path)
-
+      logger.debug('Extracting zip file for %s to %s',
+                   ff_flow.flow_id, local_path)
       with zipfile.ZipFile(fp) as zip_file:
-        zip_root_dir = f'{self._grr_client.client_id}_flow_{ff_flow.data.name}_{ff_flow.flow_id}'
+        zip_root_dir = (f'{self._grr_client.client_id}_flow_{ff_flow.data.name}'
+                        f'_{ff_flow.flow_id}')
 
         for file_info in zip_file.infolist():
           if (file_info.filename.endswith(f'{ff_flow.flow_id}/MANIFEST') or
-              file_info.filename.endswith(f'{self._grr_client.client_id}/client_info.yaml')):
-            logger.debug('Skipping extraction of %s based on filename match', file_info.filename)
+              file_info.filename.endswith(
+                  f'{self._grr_client.client_id}/client_info.yaml')):
+            logger.debug('Skipping extraction of %s based on filename match',
+                         file_info.filename)
             continue
           logger.debug('Extracting %s to %s', file_info.filename, local_path)
 
           nested_file_path = file_info.filename.replace(
-              os.path.join(zip_root_dir, self._grr_client.client_id, 'fs', os_base) + os.path.sep, '')
+              os.path.join(zip_root_dir, self._grr_client.client_id, 'fs',
+                           os_base) + os.path.sep, '')
           dest_file_path = os.path.join(local_path, nested_file_path)
           os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
 
@@ -775,10 +819,12 @@ class GRRShellClient:
     """
     if flow_handle.data.name == 'GetFile':
       return True
-    if flow_handle.data.name in ('CollectFilesByKnownPath', 'CollectBrowserHistory'):
+    if flow_handle.data.name in ('CollectFilesByKnownPath',
+                                 'CollectBrowserHistory'):
       return False
     if flow_handle.data.name == 'ArtifactCollectorFlow':
-      acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(flow_handle.data.args.value)
+      acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(
+          flow_handle.data.args.value)
 
       if not acf_args.artifact_list:
         raise RuntimeError('No artefacts specified in ArtifactCollectorFlow')
@@ -796,10 +842,13 @@ class GRRShellClient:
         return False
       return True
 
-    raise errors.NotResumeableFlowTypeError(f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, not supported for resumption.')
+    raise errors.NotResumeableFlowTypeError(
+        f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, '
+        'not supported for resumption.')
 
   def _DetermineSourceForArtefact(self,
-                                  artefact: str) -> artifact_pb2.ArtifactSource.SourceType:
+                                  artefact: str
+                                  ) -> artifact_pb2.ArtifactSource.SourceType:
     """Given an artefact, determines the source type to use.
 
     Artefacts can have multiple sources, in which case we need to determine

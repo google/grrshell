@@ -32,5 +32,6 @@ def UnixTSToReadable(ts: Union[float, int]) -> str:
   Returns:
     A human readbable string for the timestamp.
   """
-  return datetime.datetime.fromtimestamp(int(ts),
-                                         tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+  return datetime.datetime.fromtimestamp(
+      int(ts),
+      tz=datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')

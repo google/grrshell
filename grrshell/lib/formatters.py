@@ -54,7 +54,9 @@ class GRRShellFormatter:
       if name in self._callback_map:
         lines += self._callback_map[name](result.payload, flow_handle)
       else:
-        raise RuntimeError(f'Unsupported result type for output formatting: {name}. Consider raising a bug for support.')
+        raise RuntimeError(
+            f'Unsupported result type for output formatting: {name}. '
+            'Consider raising a bug for support.')
     return lines
 
   def _FormatStatEntry(self,
@@ -96,7 +98,9 @@ class GRRShellFormatter:
     lines: list[str] = []
 
     stats = payload.stat_entry
-    natural_size = humanize.naturalsize(stats.st_size, binary=True, format='%.1f')
+    natural_size = humanize.naturalsize(stats.st_size,
+                                        binary=True,
+                                        format='%.1f')
 
     if stats.pathspec.mount_point and stats.pathspec.nested_path.path:
       pathname = stats.pathspec.mount_point + stats.pathspec.nested_path.path
@@ -111,9 +115,12 @@ class GRRShellFormatter:
     lines.append(f'    st_uid:         {stats.st_uid}')
     lines.append(f'    st_gid:         {stats.st_gid}')
     lines.append(f'    st_size:        {stats.st_size} 'f'({natural_size})')
-    lines.append(f'    st_atime:       {stats.st_atime} - {utils.UnixTSToReadable(stats.st_atime)}')
-    lines.append(f'    st_mtime:       {stats.st_mtime} - {utils.UnixTSToReadable(stats.st_mtime)}')
-    lines.append(f'    st_ctime:       {stats.st_ctime} - {utils.UnixTSToReadable(stats.st_ctime)}')
+    lines.append(f'    st_atime:       {stats.st_atime} - '
+                 f'{utils.UnixTSToReadable(stats.st_atime)}')
+    lines.append(f'    st_mtime:       {stats.st_mtime} - '
+                 f'{utils.UnixTSToReadable(stats.st_mtime)}')
+    lines.append(f'    st_ctime:       {stats.st_ctime} - '
+                 f'{utils.UnixTSToReadable(stats.st_ctime)}')
     lines.append(f'    st_blocks:      {stats.st_blocks}')
     lines.append(f'    st_blksize:     {stats.st_blksize}')
     lines.append(f'    st_rdev:        {stats.st_rdev}')
@@ -137,9 +144,13 @@ class GRRShellFormatter:
     Returns:
       A list of strings, one per line, of formatted output.
     """
-    pathtype = jobs_pb2.PathSpec.PathType.Name(payload.pathspec.nested_path.pathtype).lower()
-    path = (f'{flow_handle.client_id}_flow_{flow_handle.data.name}_{flow_handle.flow_id}/{flow_handle.client_id}/fs/{pathtype}'
-            f'{payload.pathspec.path}{payload.pathspec.nested_path.path}:{payload.pathspec.nested_path.stream_name}')
+    pathtype = jobs_pb2.PathSpec.PathType.Name(
+        payload.pathspec.nested_path.pathtype).lower()
+    path = (
+        f'{flow_handle.client_id}_flow_{flow_handle.data.name}_'
+        f'{flow_handle.flow_id}/{flow_handle.client_id}/fs/{pathtype}'
+        f'{payload.pathspec.path}{payload.pathspec.nested_path.path}:'
+        f'{payload.pathspec.nested_path.stream_name}')
 
     with io.BytesIO() as buf:
       for chunk in flow_handle.GetFilesArchive():

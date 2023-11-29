@@ -13,12 +13,15 @@
 # limitations under the License.
 """Unit tests for util methods."""
 
+# pylint: disable=wrong-import-order
 from typing import Union
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 from grrshell.lib import utils
+
+
+# pylint: disable=protected-access
 
 
 class UnixTSToReadableTest(parameterized.TestCase):

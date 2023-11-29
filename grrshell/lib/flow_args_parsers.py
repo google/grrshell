@@ -15,9 +15,10 @@
 
 
 from typing import Any
+
+from grr_api_client import flow
 from grr_response_proto import flows_pb2
 from grr_response_proto import timeline_pb2
-from grr_api_client import flow
 
 
 def _FileFinderArgsParse(args: Any, multiline: bool) -> list[str]:
@@ -33,12 +34,14 @@ def _FileFinderArgsParse(args: Any, multiline: bool) -> list[str]:
   return [f'{action} <MULTIPLE PATHS>']
 
 
-def _TimelineArgsParse(args: Any, _multiline: bool) -> list[str]:
-  return [f'root: {timeline_pb2.TimelineArgs.FromString(args.value).root.decode("utf-8")}']
+def _TimelineArgsParse(args: Any, multiline: bool) -> list[str]:  # pylint: disable=unused-argument
+  root = timeline_pb2.TimelineArgs.FromString(args.value).root.decode('utf-8')
+  return [f'root: {root}']
 
 
 def _ArtifactCollectorFlowArgsParse(args: Any, multiline: bool) -> list[str]:
-  artefacts = flows_pb2.ArtifactCollectorFlowArgs.FromString(args.value).artifact_list
+  artefacts = flows_pb2.ArtifactCollectorFlowArgs.FromString(
+      args.value).artifact_list
   if multiline:
     return [f'Artefact: {a}' for a in artefacts]
   if len(artefacts) == 1:
@@ -46,7 +49,7 @@ def _ArtifactCollectorFlowArgsParse(args: Any, multiline: bool) -> list[str]:
   return ['<MULTIPLE ARTEFACTS>']
 
 
-def _GetFileArgsParse(args: Any, _multiline: bool) -> list[str]:
+def _GetFileArgsParse(args: Any, multiline: bool) -> list[str]:  # pylint: disable=unused-argument
   args = flows_pb2.GetFileArgs.FromString(args.value)
   param = args.pathspec.path
   if args.pathspec.stream_name:
@@ -56,7 +59,8 @@ def _GetFileArgsParse(args: Any, _multiline: bool) -> list[str]:
 
 def _CollectFilesByKnownPathArgsParse(args: Any, multiline: bool) -> list[str]:
   args = flows_pb2.CollectFilesByKnownPathArgs.FromString(args.value)
-  level = flows_pb2.CollectFilesByKnownPathArgs.CollectionLevel.Name(args.collection_level)
+  level = flows_pb2.CollectFilesByKnownPathArgs.CollectionLevel.Name(
+      args.collection_level)
   if multiline:
     lines = [f'Collection Level: {level}']
     lines += [f'Path: {p}' for p in args.paths]
@@ -74,9 +78,12 @@ def _CollectBrowserHistoryArgsParse(args: Any, multiline: bool) -> list[str]:
 
 
 _FLOW_ARGS_PARSING_FUNCTIONS = {
-    'grr.ArtifactCollectorFlowArgs': _ArtifactCollectorFlowArgsParse,
-    'grr.CollectBrowserHistoryArgs': _CollectBrowserHistoryArgsParse,
-    'grr.CollectFilesByKnownPathArgs': _CollectFilesByKnownPathArgsParse,
+    'grr.ArtifactCollectorFlowArgs':
+        _ArtifactCollectorFlowArgsParse,
+    'grr.CollectBrowserHistoryArgs':
+        _CollectBrowserHistoryArgsParse,
+    'grr.CollectFilesByKnownPathArgs':
+        _CollectFilesByKnownPathArgsParse,
     'grr.FileFinderArgs': _FileFinderArgsParse,
     'grr.GetFileArgs': _GetFileArgsParse,
     'grr.InterrogateArgs': lambda x, y: [''],
@@ -97,5 +104,6 @@ def Parse(flow_handle: flow.Flow, multiline: bool = False) -> list[str]:
   """
   typename = flow_handle.data.args.TypeName()
   if typename in _FLOW_ARGS_PARSING_FUNCTIONS:
-    return _FLOW_ARGS_PARSING_FUNCTIONS[typename](flow_handle.data.args, multiline)
+    return _FLOW_ARGS_PARSING_FUNCTIONS[typename](
+        flow_handle.data.args, multiline)
   return ['<UNSUPPORTED FLOW TYPE>']

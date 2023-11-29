@@ -72,7 +72,6 @@ class _Command:
   path_param: bool = False
   is_alias: bool = False
 
-
 # pylint: disable=line-too-long
 _ARTEFACT_HELP_LONG = """\tRequires an artefact name argument, eg BrowserHistory."""
 _COLLECT_HELP_LONG = """\tRequires a path argument. Supports both absolute and relative paths.
@@ -101,21 +100,32 @@ _SET_LONG_HELP = """\tCurrently supported shell env values:
 \t* max-file-size Specify a max file size for file collections. If not specified, the GRR default of 500MB is used."""
 # pylint: enable=line-too-long
 
-_ARTEFACT_HELP = _Help('\tLaunch and download an ArtifactCollectorFlow (asynchronous)', _ARTEFACT_HELP_LONG)
+# go/keep-sorted start
+_ARTEFACT_HELP = _Help(
+    '\tLaunch and download an ArtifactCollectorFlow (asynchronous)',
+    _ARTEFACT_HELP_LONG)
 _CD_HELP = _Help('\tChange directory')
 _CLEAR_HELP = _Help('\tClear the terminal')
-_COLLECT_HELP = _Help('\tCollect remote files (asynchronous)', _COLLECT_HELP_LONG)
-_DETAIL_HELP = _Help('\tFetch and display detailed information on a flow', _DETAIL_HELP_LONG)
+_COLLECT_HELP = _Help('\tCollect remote files (asynchronous)',
+                      _COLLECT_HELP_LONG)
+_DETAIL_HELP = _Help('\tFetch and display detailed information on a flow',
+                     _DETAIL_HELP_LONG)
 _EXIT_HELP = _Help('\tExit shell (alias "quit" and <CTRL+D>)')
-_FIND_HELP = _Help('\tSearch for file paths matching a pattern.', _FIND_HELP_LONG)
+_FIND_HELP = _Help('\tSearch for file paths matching a pattern.',
+                   _FIND_HELP_LONG)
 _FLOWS_HELP = _Help('\tList background flows status.', _FLOWS_HELP_LONG)
 _HELP_HELP = _Help('\tThis help text (aliases "h" and "?")', _HELP_HELP_LONG)
-_INFO_HELP = _Help('\tFetch FS information and hashes of a remote file (synchronous).', _INFO_HELP_LONG)
-_LS_HELP = _Help('\tList directory entries, with an optional path argument.', _LS_HELP_LONG)
+_INFO_HELP = _Help(
+    '\tFetch FS information and hashes of a remote file (synchronous).',
+    _INFO_HELP_LONG)
+_LS_HELP = _Help('\tList directory entries, with an optional path argument.',
+                 _LS_HELP_LONG)
 _PWD_HELP = _Help('\tPrint current directory')
-_REFRESH_HELP = _Help('\tRefresh remote emulated FS (synchronous)', _REFRESH_HELP_LONG)
+_REFRESH_HELP = _Help('\tRefresh remote emulated FS (synchronous)',
+                      _REFRESH_HELP_LONG)
 _RESUME_HELP = _Help('\tResume an existing flow', _RESUME_HELP_LONG)
 _SET_HELP = _Help('\tSet a shell value', _SET_LONG_HELP)
+# go/keep-sorted end
 
 
 class GRRShellREPL:
@@ -152,15 +162,18 @@ class GRRShellREPL:
 
   def RunShell(self) -> None:
     """Runs the GRR Shell REPL."""
-    completer = _GrrShellREPLPromptCompleter(self._emulated_fs, list(self._commands.keys()),
-                                             [name for name in self._commands if self._commands[name].path_param],
-                                             list(self._grr_shell_client.GetSupportedArtefactNames()))
-    prompts = prompt_toolkit.PromptSession(completer=completer, style=_PROMPT_STYLE)
+    completer = _GrrShellREPLPromptCompleter(
+        self._emulated_fs, list(self._commands.keys()),
+        [name for name in self._commands if self._commands[name].path_param],
+        list(self._grr_shell_client.GetSupportedArtefactNames()))
+    prompts = prompt_toolkit.PromptSession(completer=completer,
+                                           style=_PROMPT_STYLE)
 
     try:
       while True:
         try:
-          text = prompts.prompt(self._GeneratePrompt(), bottom_toolbar=self._GenerateBottomBar())
+          text = prompts.prompt(self._GeneratePrompt(),
+                                bottom_toolbar=self._GenerateBottomBar())
           logger.debug('User entered "%s"', text)
           self._HandleCommand(text)
         except KeyboardInterrupt:
@@ -174,8 +187,8 @@ class GRRShellREPL:
     except EOFError:  # CTRL+D
       logger.debug('User entered <CTRL+D>')
     finally:
-      print('Exiting')
       self._grr_shell_client.WaitForBackgroundCompletions()
+      print('Exiting')
 
   def _BuildCommands(self) -> dict[str, _Command]:
     """Builds a command dispatcher.
@@ -185,6 +198,7 @@ class GRRShellREPL:
         shell commands to methods.
     """
     commands = [
+        # go/keep-sorted start
         _Command('?', self._PrintHelp, _HELP_HELP, is_alias=True),
         _Command('artefact', self._Artefact, _ARTEFACT_HELP),
         _Command('artifact', self._Artefact, _ARTEFACT_HELP, is_alias=True),
@@ -196,7 +210,8 @@ class GRRShellREPL:
         _Command('find', self._FindFiles, _FIND_HELP),
         _Command('flows', self._Flows, _FLOWS_HELP),
         _Command('h', self._PrintHelp, _HELP_HELP, is_alias=True),
-        _Command('hash', self._Info, _INFO_HELP, is_alias=True, path_param=True),
+        _Command(
+            'hash', self._Info, _INFO_HELP, is_alias=True, path_param=True),
         _Command('help', self._PrintHelp, _HELP_HELP),
         _Command('info', self._Info, _INFO_HELP, path_param=True),
         _Command('ls', self._Ls, _LS_HELP, path_param=True),
@@ -205,6 +220,7 @@ class GRRShellREPL:
         _Command('refresh', self._Refresh, _REFRESH_HELP, path_param=True),
         _Command('resume', self._Resume, _RESUME_HELP),
         _Command('set', self._Set, _SET_HELP)
+        # go/keep-sorted end
     ]
     return {c.name: c for c in commands}
 
@@ -214,8 +230,9 @@ class GRRShellREPL:
     Returns:
       The help text for the shell.
     """
-    return '\n'.join(sorted([f'\t{c.name:<12} {c.help.short}' for c in self._commands.values()
-                             if not c.is_alias]))
+    return '\n'.join(sorted([
+        f'\t{c.name:<12} {c.help.short}'
+        for c in self._commands.values() if not c.is_alias]))
 
   def _GeneratePrompt(self) -> str:
     """Generates the shell prompt.
@@ -250,7 +267,8 @@ class GRRShellREPL:
     last_seen_relative = humanize.naturaldelta(now - last_seen)
 
     last_timeline = datetime.datetime.fromtimestamp(
-        self._emulated_fs.GetTimelineTime() / 1000000, tz=datetime.timezone.utc)
+        self._emulated_fs.GetTimelineTime() / 1000000, tz=datetime.timezone.utc
+    )
     last_timeline_colour_class = self._GenerateColourClass(last_timeline, now)
     last_timeline_relative = humanize.naturaldelta(now - last_timeline)
 
@@ -258,9 +276,14 @@ class GRRShellREPL:
     last_timeline = last_timeline.strftime('%Y-%m-%d %H:%M:%S')
 
     return [
-        (last_seen_colour_class, f' Last seen: {last_seen} ({last_seen_relative} ago) '),
-        ('class:bottom-toolbar', f' {running_count}/{total_count} flows running '),
-        (last_timeline_colour_class, f' Timeline freshness: {last_timeline} ({last_timeline_relative} ago) ')]
+        (last_seen_colour_class,
+         f' Last seen: {last_seen} ({last_seen_relative} ago) '),
+        ('class:bottom-toolbar',
+         f' {running_count}/{total_count} flows running '),
+        (last_timeline_colour_class,
+         f' Timeline freshness: {last_timeline} '
+         f'({last_timeline_relative} ago) '),
+    ]
 
   def _HandleCommand(self, text: str) -> None:
     """Handles the command from the user.
@@ -281,8 +304,9 @@ class GRRShellREPL:
     else:
       print('Unrecognised command. Use "help" for a command list.')
 
-  def _Exit(self, _: Sequence[str]) -> None:
+  def _Exit(self, params: Sequence[str]) -> None:
     """Exits the shell."""
+    del params  # Unused
     sys.exit(0)
 
   def _PrintHelp(self, params: Sequence[str]) -> None:
@@ -317,11 +341,16 @@ class GRRShellREPL:
     elif windows_volume_root_regex.match(path):
       path += '/'
 
-    timeline_data = self._grr_shell_client.CollectTimeline(path, existing_timeline)
+    timeline_data = self._grr_shell_client.CollectTimeline(
+        path, existing_timeline)
     # Zero out the path we're refreshing.
-    self._emulated_fs.ClearPath(path, self._grr_shell_client.last_timeline_time)
+    self._emulated_fs.ClearPath(path,
+                                self._grr_shell_client.last_timeline_time)
 
-    self._emulated_fs.ParseTimelineFlow(timeline_data, self._grr_shell_client.last_timeline_time)
+    self._emulated_fs.ParseTimelineFlow(
+        timeline_data,
+        self._grr_shell_client.last_timeline_time
+    )
 
     if self._emulated_fs.GetPWD() == path:
       self._Cd([path])
@@ -399,8 +428,9 @@ class GRRShellREPL:
     except errors.InvalidRemotePathError as exception:
       print(f'No such file or directory: {str(exception)}')
 
-  def _Pwd(self, _: Sequence[str]) -> None:
+  def _Pwd(self, params: Sequence[str]) -> None:
     """Prints the current working directory."""
+    del params  # Unused
     print(self._emulated_fs.GetPWD())
 
   def _Refresh(self, params: list[str]) -> None:
@@ -433,14 +463,18 @@ class GRRShellREPL:
     if self._emulated_fs.RemotePathExists(remote_path, dirs_only=True):
       remote_path = f'{remote_path}/*'
       remote_path = os.path.normpath(remote_path)
-      print(f'Directory collection attempted: updating to "{remote_path}". This is not recursive! For recursive collection, use '
-            'ClientFileFinder recursion syntax - ** or **N. See https://grr-doc.readthedocs.io/en/latest/investigating-with-grr/'
-            'flows/specifying-file-paths.html?#path-globbing for more on CSFF syntax.')
+      print(f'Directory collection attempted: updating to "{remote_path}". '
+            'This is not recursive! For recursive collection, use '
+            'ClientFileFinder recursion syntax - ** or **N. See '
+            'https://grr-doc.readthedocs.io/en/latest/investigating-with-grr/'
+            'flows/specifying-file-paths.html?#path-globbing for more on CSFF '
+            'syntax.')
 
-    self._grr_shell_client.CollectFilesInBackground(self._emulated_fs.NormaliseFSPath(remote_path), './')
+    self._grr_shell_client.CollectFilesInBackground(
+        self._emulated_fs.NormaliseFSPath(remote_path), './')
 
   def _Artefact(self, params: Sequence[str]) -> None:
-    """Collects an artefact from the remote client.
+    """Collects an artifact from the remote client.
 
     Args:
       params: Command components from _HandleCommand.
@@ -468,6 +502,7 @@ class GRRShellREPL:
     if '--ads' in params:
       collect_ads = True
       params.remove('--ads')
+
     if '--offline' in params:
       offline = True
       params.remove('--offline')
@@ -482,7 +517,8 @@ class GRRShellREPL:
       return
 
     path = self._emulated_fs.NormaliseFSPath(params[0])
-    collect_ads = (not self._emulated_fs.RemotePathExists(path, dirs_only=True) if collect_ads else collect_ads)
+    collect_ads = (not self._emulated_fs.RemotePathExists(path, dirs_only=True)
+                   if collect_ads else collect_ads)
 
     if offline:
       print(self._emulated_fs.OfflineFileInfo(path))
@@ -532,13 +568,14 @@ class GRRShellREPL:
       except ValueError as error:
         print(f'Could not set max-file-size to {params[1]}: {str(error)}')
 
-  def _Clear(self, _: Sequence[str]) -> None:
+  def _Clear(self, params: Sequence[str]) -> None:
     """Clear the terminal."""
+    del params  # unused
     prompt_toolkit.shortcuts.clear()
 
   def _ListAllFlows(self, params: Sequence[str]) -> str:
     """List all flows, not just those launched by this shell session."""
-    count = 15
+    count = 50
     try:
       if len(params) == 1:
         count = int(params[0])
@@ -595,9 +632,10 @@ class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
     self._artifacts = artifacts
 
   # pylint: disable=inconsistent-return-statements
-  def get_completions(self,
-                      document: prompt_toolkit.document.Document,
-                      complete_event: prompt_toolkit.completion.base.CompleteEvent) -> ...:
+  def get_completions(
+      self,
+      document: prompt_toolkit.document.Document,
+      complete_event: prompt_toolkit.completion.base.CompleteEvent) -> ...:
     """Yields autocomplete entries for the grr shell."""
     try:
       parts = shlex.split(document.text)
@@ -613,12 +651,12 @@ class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
         if not document.text.endswith(' '):
           suggestions = [c for c in self._commands if c.startswith(command)]
           offset = -len(command)
-
         else:
           if command not in self._commands_with_params:
             return None
-          # TODO(ramoj,fryy): Refactor this for a dir_only completer.
-          suggestions, offset = self._CompleteRemotePath('', command in ('cd', 'refresh'))
+          suggestions, offset = self._CompleteRemotePath(
+              '', command in ('cd', 'refresh'))
+
       elif len(parts) == 2:
         if command in ('artefact', 'artifact'):
           if parts[1] in self._artifacts:
@@ -631,7 +669,8 @@ class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
         elif command not in self._commands_with_params:
           return None
         else:
-          suggestions, offset = self._CompleteRemotePath(parts[1], command == 'cd')
+          suggestions, offset = self._CompleteRemotePath(parts[1],
+                                                         command == 'cd')
       for s in suggestions:
         yield prompt_toolkit.completion.Completion(s, start_position=offset)
     except Exception:  # pylint: disable=broad-exception-caught
@@ -658,7 +697,8 @@ class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
       dirname = './'
 
     try:
-      suggestions = ['..'] + self._emulated_fs.GetChildrenOfPath(dirname, dirs_only)
+      suggestions = ['..'] + self._emulated_fs.GetChildrenOfPath(dirname,
+                                                                 dirs_only)
     except errors.InvalidRemotePathError:
       return [], 0
 
@@ -674,11 +714,7 @@ class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):
       in_text: Text provided by the user to offer completions for.
 
     Returns:
-        A list of suggestions
-        A list of suggestions
-        A length offset to be used by the base class get_completions method.
       A list of suggestions
-        A length offset to be used by the base class get_completions method.
     """
     suggestions = [s for s in self._artifacts if in_text.lower() in s.lower()]
     return suggestions

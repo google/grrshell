@@ -31,28 +31,45 @@ from grrshell.lib import grr_shell_client
 from grrshell.lib import grr_shell_repl
 
 
-_ARTIFACT_HELP = 'The artifact to collect from GRR via an ArtifactCollector flow'
+# go/keep-sorted start
+_ARTIFACT_HELP = (
+    'The artifact to collect from GRR via an ArtifactCollector flow')
 _CLIENT_HELP = 'GRR ID or hostname of client'
 _DEBUG_HELP = 'Enable debug logging'
 _GRR_PASSWORD_HELP = 'GRR password'
 _GRR_SERVER_HELP = 'GRR HTTP Endpoint'
 _GRR_USERNAME_HELP = 'GRR username'
-_INITIAL_TIMELINE_HELP = ('Specify an existing timeline flow to use instead of looking for a recent flow, or launching a new timeline flow.'
-                          ' (Optional)')
+_INITIAL_TIMELINE_HELP = (
+    'Specify an existing timeline flow to use instead of looking for a recent '
+    'flow, or launching a new timeline flow. (Optional)')
 _LOCAL_PATH_HELP = 'Location to store the collected files'
-_MAX_FILE_SIZE_HELP = 'The max file size for GRR collection. 0 for the GRR default. (Optional)'
-_NO_INITIAL_TIMELINE_HELP = 'Start without collecting a timeline from the client'
+_MAX_FILE_SIZE_HELP = (
+    'The max file size for GRR collection. 0 for the GRR default. (Optional)')
+_NO_INITIAL_TIMELINE_HELP = (
+    'Specify an existing timeline flow to use instead of looking for a recent '
+    'flow, or launching a new timeline flow. (Optional)')
 _REMOTE_PATH_HELP = 'ClientFileFinder expression for remote files'
+# go/keep-sorted end
 
-_ARTEFACT = flags.DEFINE_string(name='artefact', default='', required=False, help=_ARTIFACT_HELP)
-_CLIENT = flags.DEFINE_string(name='client', default='', required=False, help=_CLIENT_HELP)
+# go/keep-sorted start
+_ARTEFACT = flags.DEFINE_string(
+    name='artefact', default='', required=False, help=_ARTIFACT_HELP)
+_CLIENT = flags.DEFINE_string(
+    name='client', default='', required=False, help=_CLIENT_HELP)
 _DEBUG = flags.DEFINE_bool(name='debug', default=False, help=_DEBUG_HELP)
-_INITIAL_TIMELINE = flags.DEFINE_string(name='initial-timeline', default='', required=False, help=_INITIAL_TIMELINE_HELP)
-_LOCAL_PATH = flags.DEFINE_string(name='local-path', default='', required=False, help=_LOCAL_PATH_HELP)
-_MAX_FILE_SIZE = flags.DEFINE_string(name='max-file-size', default='0', required=False, help=_MAX_FILE_SIZE_HELP)
-_NO_INITIAL_TIMELINE = flags.DEFINE_bool(name='no-initial-timeline', default=False, required=False, help=_NO_INITIAL_TIMELINE_HELP)
-_REMOTE_PATH = flags.DEFINE_string(name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
-
+_INITIAL_TIMELINE = flags.DEFINE_string(
+    name='initial-timeline', default='', required=False,
+    help=_INITIAL_TIMELINE_HELP)
+_LOCAL_PATH = flags.DEFINE_string(
+    name='local-path', default='', required=False, help=_LOCAL_PATH_HELP)
+_MAX_FILE_SIZE = flags.DEFINE_string(
+    name='max-file-size', default='0', required=False, help=_MAX_FILE_SIZE_HELP)
+_NO_INITIAL_TIMELINE = flags.DEFINE_bool(
+    name='no-initial-timeline', default=False, required=False,
+    help=_NO_INITIAL_TIMELINE_HELP)
+_REMOTE_PATH = flags.DEFINE_string(
+    name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
+# go/keep-sorted end
 _GRR_USERNAME = flags.DEFINE_string(name='username', default='', required=False, help=_GRR_USERNAME_HELP)
 _GRR_PASSWORD = flags.DEFINE_string(name='password', default='', required=False, help=_GRR_PASSWORD_HELP)
 _GRR_SERVER = flags.DEFINE_string(name='grr-server', default='', required=False, help=_GRR_SERVER_HELP)
@@ -60,6 +77,7 @@ _GRR_SERVER = flags.DEFINE_string(name='grr-server', default='', required=False,
 flags.DEFINE_alias('artifact', 'artefact')
 flags.DEFINE_alias('user', 'username')
 flags.DEFINE_alias('pass', 'password')
+
 
 _USAGE = f"""grr_shell {{shell,collect,artefact,help}}
 
@@ -97,7 +115,6 @@ Enable debug logging with --{_DEBUG.name}
 Raise bugs here: https://github.com/google/grrshell/issues/new
 """
 
-
 logger = logging.logging.getLogger('grrshell')
 
 
@@ -115,15 +132,15 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
   if not argv:
     argv = ('shell',)
 
-  if argv[0] == 'help':
-    print(_USAGE)
-    return
-
   try:
     max_size = int(_MAX_FILE_SIZE.value)
   except ValueError as error:
     print(f'Could not set max-file-size to {_MAX_FILE_SIZE.value}: {str(error)}\nContinuing with default value.')
     max_size = 0
+
+  if argv[0] == 'help':
+    print(_USAGE)
+    return
 
   for flag in (_GRR_SERVER, _GRR_USERNAME, _GRR_PASSWORD, _CLIENT):
     if not flag.value:
@@ -131,7 +148,8 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
       return
 
   if _NO_INITIAL_TIMELINE.value and _INITIAL_TIMELINE.value:
-    print(f'--{_NO_INITIAL_TIMELINE.name} and --{_INITIAL_TIMELINE.name} are mutually exclusive.')
+    print(f'--{_NO_INITIAL_TIMELINE.name} and --{_INITIAL_TIMELINE.name} are '
+          'mutually exclusive.')
     return
 
   try:
@@ -140,6 +158,7 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
                                              _GRR_PASSWORD.value,
                                              _CLIENT.value,
                                              max_size)
+
   except (errors.NoGRRApprovalError, errors.ClientNotFoundError) as error:
     logger.error('Error accessing grr client', exc_info=True)
     print(str(error))
@@ -151,7 +170,8 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
       return
     client.CollectFiles(_REMOTE_PATH.value, _LOCAL_PATH.value)
   elif argv[0] == 'shell':
-    shell = grr_shell_repl.GRRShellREPL(client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
+    shell = grr_shell_repl.GRRShellREPL(
+        client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
     shell.RunShell()
   elif argv[0] in ('artifact', 'artefact'):
     if not all((_ARTEFACT.value, _LOCAL_PATH.value)):
@@ -164,15 +184,17 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
 
 def _SetUpLogging() -> None:
   """Sets up logging if requested."""
-  filename = os.path.join(tempfile.gettempdir(),
-                          f'grrshell_{datetime.datetime.now().strftime("%Y%m%dT%H%M%S")}.log')
+  filename = os.path.join(
+      tempfile.gettempdir(),
+      f'grrshell_{datetime.datetime.now().strftime("%Y%m%dT%H%M%S")}.log')
 
   logger.setLevel(logging.DEBUG)
   logger.propagate = False
   fh = logging.logging.FileHandler(filename)
 
   fh.setFormatter(logging.logging.Formatter(
-      fmt=('%(asctime)s.%(msecs)03d - %(threadName)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s'),
+      fmt=('%(asctime)s.%(msecs)03d - %(threadName)s - %(module)s.%(funcName)s'
+           ':%(lineno)d - %(message)s'),
       datefmt='%Y-%m-%dT%H:%M:%S'))
   logger.addHandler(fh)
 

@@ -17,7 +17,7 @@ import dataclasses
 import fnmatch
 import os
 import re
-from typing import cast, Union, Optional
+from typing import Union, cast, Optional
 
 from absl import logging
 import humanize
@@ -70,6 +70,8 @@ _FSEntry = Union['_EmulatedFile', '_EmulatedDirectory']
 
 @dataclasses.dataclass(eq=True)
 class _EmulatedFile:
+  """Represents a file in the Emulated FS."""
+
   filename: str
   stats: _TimelineRow
 
@@ -83,8 +85,9 @@ class _EmulatedFile:
     Returns:
       The LSEntry for the object.
     """
-    return _LSEntry(self.stats.mode_as_string, self.stats.uid, self.stats.gid, self.stats.size,
-                    utils.UnixTSToReadable(self.stats.mtime), '.' if dot_name else self.filename)
+    return _LSEntry(self.stats.mode_as_string, self.stats.uid, self.stats.gid,
+                    self.stats.size, utils.UnixTSToReadable(self.stats.mtime),
+                    '.' if dot_name else self.filename)
 
 
 @dataclasses.dataclass(eq=True)
@@ -104,7 +107,8 @@ class _LSEntry:
   name: str = ''
 
   def __str__(self) -> str:
-    return f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12} {self.mtime} {self.name}'
+    return (f'{self.mode_as_string} {self.uid:>8} {self.gid:>8} {self.size:>12}'
+            f' {self.mtime} {self.name}')
 
   def __lt__(self, other: '_LSEntry') -> bool:
     if (self.mode_as_string[0], other.mode_as_string[0]).count('d') == 1:
@@ -121,8 +125,7 @@ _LS_SORT_KEY_MAP = {
 class GrrShellEmulatedFS:
   """Emulated remote FS for the GRR Shell client."""
 
-  def __init__(self,
-               os_type: str):
+  def __init__(self, os_type: str):
     """Initialises the emulated remote FS.
 
     Args:
@@ -164,8 +167,7 @@ class GrrShellEmulatedFS:
     """
     logger.debug('Parsing timeline data')
 
-    timeline_data = timeline_data.replace('\r', '')  # b/285992786
-
+    timeline_data = timeline_data.replace('\r', '')
     for line in timeline_data.splitlines():
       if line[0] == '#':
         continue
@@ -184,8 +186,7 @@ class GrrShellEmulatedFS:
     if not self.RemotePathExists(self.GetPWD(), dirs_only=True):
       self._pwd = self._root
 
-  def NormaliseFSPath(self,
-                      path: str) -> str:
+  def NormaliseFSPath(self, path: str) -> str:
     """Normalises an OS path.
 
     This includes resolving '../' and converting relative paths to absolute,
@@ -203,9 +204,7 @@ class GrrShellEmulatedFS:
       return os.path.normpath(path)
     return os.path.normpath(os.path.join(self.GetPWD(), path))
 
-  def RemotePathExists(self,
-                       path: str,
-                       dirs_only: bool = False) -> bool:
+  def RemotePathExists(self, path: str, dirs_only: bool = False) -> bool:
     """Checks if the path exists in the emulated FS.
 
     Args:
@@ -237,7 +236,8 @@ class GrrShellEmulatedFS:
     Args:
       path: The path in which to look for children.
       sortkey: Sorting method. Key for _LS_SORT_KEY_MAP dict.
-      ascending: True if entries should be in ascending order, False otherwise,
+      ascending: True if entries should be in ascending order, False
+        otherwise.
 
     Returns:
       A list of ls entries.
@@ -259,7 +259,8 @@ class GrrShellEmulatedFS:
       path = os.path.dirname(path)
       if '*' in path:
         raise RuntimeError(
-          f'Globbing only supported for the final path component: {os.path.join(path, glob_tail)}')
+            'Globbing only supported for the final path component: '
+            f'{os.path.join(path, glob_tail)}')
 
     path_entry = self._ResolveRemotePathToEmulatedFS(path)
 
@@ -272,10 +273,10 @@ class GrrShellEmulatedFS:
         entries = [e for e in entries if e.name in globbed_names]
     else:
       entries = [path_entry.GetLSEntry()]
-    return sorted(entries, key=_LS_SORT_KEY_MAP.get(sortkey), reverse=not ascending)
+    return sorted(
+        entries, key=_LS_SORT_KEY_MAP.get(sortkey), reverse=not ascending)
 
-  def Cd(self,
-         path: str) -> None:
+  def Cd(self, path: str) -> None:
     """Changes the emulated working directory.
 
     Args:
@@ -293,9 +294,7 @@ class GrrShellEmulatedFS:
 
     self._pwd = path_entry
 
-  def GetChildrenOfPath(self,
-                        path: str,
-                        dirs_only: bool = False) -> list[str]:
+  def GetChildrenOfPath(self, path: str, dirs_only: bool = False) -> list[str]:
     """Gets a list of child entries of a path.
 
     Args:
@@ -321,11 +320,11 @@ class GrrShellEmulatedFS:
     if dirs_only:
       children = [c for c in children if c.stats.mode_as_string[0] == 'd']
 
-    return [f'{c.filename}/' if c.stats.mode_as_string[0] == 'd' else c.filename for c in children]
+    return [
+        f'{c.filename}/' if c.stats.mode_as_string[0] == 'd' else c.filename
+        for c in children]
 
-  def Find(self,
-           basedir: str,
-           needle: str) -> list[str]:
+  def Find(self, basedir: str, needle: str) -> list[str]:
     """Searches all children of a directory for a value.
 
     Args:
@@ -346,7 +345,8 @@ class GrrShellEmulatedFS:
 
     directory = self._ResolveRemotePathToEmulatedFS(basedir)
     if not isinstance(directory, _EmulatedDirectory):
-      raise errors.IsAFileError(f'Starting directory is actually a file: {basedir}')
+      raise errors.IsAFileError(
+          f'Starting directory is actually a file: {basedir}')
 
     matcher = re.compile(needle)
     results = self._GetFSTreeFromPath(directory)
@@ -385,14 +385,13 @@ class GrrShellEmulatedFS:
         if path_part == last_part:
           current_ptr.children[path_part] = fs_entry
         else:
-          current_ptr.children[path_part] = _EmulatedDirectory(path_part, _TimelineRow(), {}, timeline_time)
+          current_ptr.children[path_part] = _EmulatedDirectory(
+              path_part, _TimelineRow(), {}, timeline_time)
       current_ptr = current_ptr.children[path_part]
     if current_ptr.stats == _TimelineRow():
       current_ptr.stats = row
 
-  def ClearPath(self,
-                remote_path: str,
-                timeline_time: int) -> None:
+  def ClearPath(self, remote_path: str, timeline_time: int) -> None:
     """Zeros out a path in anticipation of refreshing its timeline.
 
     Args:
@@ -404,9 +403,12 @@ class GrrShellEmulatedFS:
       return
 
     try:
-      node = cast(_EmulatedDirectory, self._ResolveRemotePathToEmulatedFS(remote_path))
+      node = cast(
+          _EmulatedDirectory, self._ResolveRemotePathToEmulatedFS(remote_path))
       node.timeline_time = timeline_time
-      parent = cast(_EmulatedDirectory, self._ResolveRemotePathToEmulatedFS(os.path.dirname(node.stats.name)))
+      parent = cast(
+          _EmulatedDirectory,
+          self._ResolveRemotePathToEmulatedFS(os.path.dirname(node.stats.name)))
       parent.children.pop(node.filename)
     except errors.InvalidRemotePathError:
       pass  # Path doesn't exist, so clearing fails, and that's ok.
@@ -427,7 +429,8 @@ class GrrShellEmulatedFS:
     except errors.InvalidRemotePathError:
       return f'No such file or directory: {remote_path}'
 
-    natural_size = humanize.naturalsize(entry.stats.size, binary=True, format='%.1f')
+    natural_size = humanize.naturalsize(
+        entry.stats.size, binary=True, format='%.1f')
 
     lines: list[str] = []
     lines.append(entry.stats.name)
@@ -436,10 +439,14 @@ class GrrShellEmulatedFS:
     lines.append(f'    uid:    {entry.stats.uid}')
     lines.append(f'    gid:    {entry.stats.gid}')
     lines.append(f'    size:   {entry.stats.size} 'f'({natural_size})')
-    lines.append(f'    atime:  {entry.stats.atime} - {utils.UnixTSToReadable(entry.stats.atime)}')
-    lines.append(f'    mtime:  {entry.stats.mtime} - {utils.UnixTSToReadable(entry.stats.mtime)}')
-    lines.append(f'    ctime:  {entry.stats.ctime} - {utils.UnixTSToReadable(entry.stats.ctime)}')
-    lines.append(f'    crtime: {entry.stats.crtime} - {utils.UnixTSToReadable(entry.stats.crtime)}')
+    lines.append(f'    atime:  {entry.stats.atime} - '
+                 f'{utils.UnixTSToReadable(entry.stats.atime)}')
+    lines.append(f'    mtime:  {entry.stats.mtime} - '
+                 f'{utils.UnixTSToReadable(entry.stats.mtime)}')
+    lines.append(f'    ctime:  {entry.stats.ctime} - '
+                 f'{utils.UnixTSToReadable(entry.stats.ctime)}')
+    lines.append(f'    crtime: {entry.stats.crtime} - '
+                 f'{utils.UnixTSToReadable(entry.stats.crtime)}')
 
     return '\n'.join(lines)
 
@@ -466,8 +473,7 @@ class GrrShellEmulatedFS:
       current_ptr = current_ptr.children[part]
     return current_ptr
 
-  def _GetFSTreeFromPath(self,
-                         directory: _EmulatedDirectory) -> list[_FSEntry]:
+  def _GetFSTreeFromPath(self, directory: _EmulatedDirectory) -> list[_FSEntry]:
     """Builds a list of all FS Entries descendent from a directory."""
     to_return: list[_FSEntry] = []
 

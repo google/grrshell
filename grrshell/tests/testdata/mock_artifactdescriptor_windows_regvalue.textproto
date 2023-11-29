@@ -1,4 +1,4 @@
-# proto-file: ops/security/grr/proto/grr_response_proto/artifact.proto
+# proto-file: grr_response_proto/artifact.proto
 # proto-message: ArtifactDescriptor
 artifact: {
   name: "Windows_RegValue"

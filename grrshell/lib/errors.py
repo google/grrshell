@@ -31,4 +31,5 @@ class NoGRRApprovalError(Exception):
 
 
 class NotResumeableFlowTypeError(Exception):
-  """"Raised when attempting to resume a flow which does not support resumption."""
+  """"Raised when attempting to resume a flow which does not support resumption.
+  """

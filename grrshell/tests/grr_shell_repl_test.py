@@ -13,6 +13,7 @@
 # limitations under the License.
 """Unit tests for the Grr Shell REPL driver."""
 
+# pylint: disable=wrong-import-order
 import contextlib
 import datetime
 import io
@@ -21,28 +22,28 @@ from unittest import mock
 
 import prompt_toolkit
 
-from absl.testing import absltest
-from absl.testing import parameterized
 from grr_api_client import api as grr_api
-
 from grrshell.lib import errors
 from grrshell.lib import grr_shell_client
 from grrshell.lib import grr_shell_emulated_fs
 from grrshell.lib import grr_shell_repl
+from absl.testing import absltest
+from absl.testing import parameterized
 
 
 _SAMPLE_TIMELINE_LINUX = 'grrshell/tests/testdata/sample_timeline_linux'
 _SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 
-_COMMANDS = ('help', 'ls', 'pwd', 'cd', 'refresh', 'info', 'collect', 'find', 'flows', 'exit', 'set',
-             'artefact', 'clear', 'resume', 'detail')
+_COMMANDS = ('help', 'ls', 'pwd', 'cd', 'refresh', 'info', 'collect', 'find',
+             'flows', 'exit', 'set', 'artefact', 'clear', 'resume', 'detail')
 _ALIASES = ('h', '?', 'hash', 'quit')
 _ARTIFACT_NAMES = ['first', 'second', 'third', 'fourth']
 
 _CLIENT_ID = 'C.0000000000000001'
 
 
-# pylint: disable=protected-access,consider-using-with
+# pylint: disable=protected-access
+# pylint: disable=consider-using-with
 
 
 class GRRShellREPLTest(parameterized.TestCase):
@@ -58,11 +59,12 @@ class GRRShellREPLTest(parameterized.TestCase):
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
-            _mock_init_stubby):
+            _mock_init_http):
     """Set up tests."""
     super().setUp()
 
-    mock_collect_timeline.return_value = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+    mock_collect_timeline.return_value = open(
+        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
     mock_get_os.return_value = 'Linux'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
@@ -97,23 +99,30 @@ class GRRShellREPLTest(parameterized.TestCase):
         return isinstance(obj, classinfo._mock_wraps)
       return isinstance(obj, classinfo)
 
-    mock_dt.now.return_value = datetime.datetime.fromtimestamp(now, tz=datetime.timezone.utc)
+    mock_dt.now.return_value = datetime.datetime.fromtimestamp(
+        now, tz=datetime.timezone.utc)
 
-    with (mock.patch.object(self.shell._grr_shell_client, 'GetRunningFlowCount') as mock_get_flow_count,
-          mock.patch.object(self.shell._grr_shell_client, 'GetLastSeenTime') as mock_get_last_seen,
-          mock.patch.object(self.shell._emulated_fs, 'GetTimelineTime') as mock_get_timeline_time,
+    with (mock.patch.object(self.shell._grr_shell_client, 'GetRunningFlowCount'
+                            ) as mock_get_flow_count,
+          mock.patch.object(self.shell._grr_shell_client, 'GetLastSeenTime'
+                            ) as mock_get_last_seen,
+          mock.patch.object(self.shell._emulated_fs, 'GetTimelineTime'
+                            ) as mock_get_timeline_time,
           mock.patch('humanize.time.isinstance') as mock_isinstance):
       mock_get_flow_count.return_value = 4, 8
-      mock_get_last_seen.return_value = datetime.datetime.fromtimestamp(75, tz=datetime.timezone.utc)
+      mock_get_last_seen.return_value = datetime.datetime.fromtimestamp(
+          75, tz=datetime.timezone.utc)
       mock_get_timeline_time.return_value = 1000000  # microseconds past epoch
       mock_isinstance.side_effect = mock_isinstance_method
 
       result = self.shell._GenerateBottomBar()
       self.assertEqual(
-        result,
-        [(expected_format_class, f' Last seen: 1970-01-01 00:01:15 ({expected_relative_lastseen} ago) '),
-         ('class:bottom-toolbar', ' 4/8 flows running '),
-         (expected_format_class, f' Timeline freshness: 1970-01-01 00:00:01 ({expected_relative_timeline} ago) ')])
+          result,
+          [(expected_format_class, ' Last seen: 1970-01-01 00:01:15 '
+                                   f'({expected_relative_lastseen} ago) '),
+           ('class:bottom-toolbar', ' 4/8 flows running '),
+           (expected_format_class, ' Timeline freshness: 1970-01-01 00:00:01'
+                                   f' ({expected_relative_timeline} ago) ')])
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_help(self, mock_prompt):
@@ -148,13 +157,17 @@ class GRRShellREPLTest(parameterized.TestCase):
 
     with mock.patch.object(self.shell._emulated_fs, 'Ls') as mock_ls:
       self.shell.RunShell()
-      mock_ls.assert_called_once_with(expected_path, expected_sort_key, expected_reversed)
+      mock_ls.assert_called_once_with(expected_path,
+                                      expected_sort_key,
+                                      expected_reversed)
 
   @parameterized.named_parameters(
       ('nonexistent', 'ls /nonexist', 'No such file or directory: /nonexist'),
-      ('bad_glob', 'ls /tm*/file', 'Globbing only supported for the final path component: /tm*'),
+      ('bad_glob', 'ls /tm*/file',
+       'Globbing only supported for the final path component: /tm*'),
       ('invalid_option', 'ls -x', 'option -x not recognized'),
-      ('mutually_exclusive_options', 'ls -St', 'Options S, t are mutually exclusive')
+      ('mutually_exclusive_options', 'ls -St',
+       'Options S, t are mutually exclusive'),
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_ls_error(self, in_text, expected_error, mock_prompt):
@@ -193,7 +206,8 @@ class GRRShellREPLTest(parameterized.TestCase):
       mock_cd.assert_called_once_with('path')
 
   @parameterized.named_parameters(
-      ('nonexistent', 'cd /nonexistent', 'No such file or directory: /nonexistent'),
+      ('nonexistent', 'cd /nonexistent',
+       'No such file or directory: /nonexistent'),
       ('file', 'cd /root/.bashrc', 'Not a directory: /root/.bashrc'),
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
@@ -222,20 +236,26 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering refresh at the prompt correctly collects and parses a timeline."""
     mock_prompt.side_effect = ['refresh', EOFError]
 
-    with (mock.patch.object(self.shell._grr_shell_client, 'CollectTimeline') as mock_collect_timeline,
-          mock.patch.object(self.shell._emulated_fs, 'ParseTimelineFlow') as mock_parse_timeline):
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'CollectTimeline') as mock_collect_timeline,
+          mock.patch.object(self.shell._emulated_fs,
+                            'ParseTimelineFlow') as mock_parse_timeline):
       self.shell.RunShell()
       mock_collect_timeline.assert_called_once()
-      mock_parse_timeline.assert_called_once_with(mock_collect_timeline.return_value, 0)
+      mock_parse_timeline.assert_called_once_with(
+          mock_collect_timeline.return_value, 0)
 
   def test_Refresh_cwd(self):
     """Tests running refresh manually on the current working dir."""
-    with (mock.patch.object(self.shell._grr_shell_client, 'CollectTimeline') as mock_collect_timeline,
-          mock.patch.object(self.shell._emulated_fs, 'ParseTimelineFlow') as mock_parse_timeline):
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'CollectTimeline') as mock_collect_timeline,
+          mock.patch.object(self.shell._emulated_fs,
+                            'ParseTimelineFlow') as mock_parse_timeline):
       self.shell._Cd(['/root'])
       self.shell._Refresh(['.'])
       mock_collect_timeline.assert_called_once()
-      mock_parse_timeline.assert_called_once_with(mock_collect_timeline.return_value, 0)
+      mock_parse_timeline.assert_called_once_with(
+          mock_collect_timeline.return_value, 0)
 
   @parameterized.named_parameters(
       ('basic', 'collect path', '/path'),
@@ -248,7 +268,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering collect at the prompt correctly calls CollectFilesInBackground."""
     mock_prompt.side_effect = [in_text, EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'CollectFilesInBackground') as mock_collect:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'CollectFilesInBackground') as mock_collect):
       self.shell.RunShell()
       mock_collect.assert_called_once_with(expected_param, './')
 
@@ -257,7 +278,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering stat at the prompt correctly calls StatFile."""
     mock_prompt.side_effect = ['info /path', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_fileinfo:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'FileInfo') as mock_fileinfo):
       self.shell.RunShell()
       mock_fileinfo.assert_called_once_with('/path', False)
 
@@ -266,7 +288,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering stat at the prompt correctly calls StatFile."""
     mock_prompt.side_effect = ['info /path --offline', EOFError]
 
-    with mock.patch.object(self.shell._emulated_fs, 'OfflineFileInfo') as mock_fileinfo:
+    with (mock.patch.object(self.shell._emulated_fs,
+                            'OfflineFileInfo') as mock_fileinfo):
       self.shell.RunShell()
       mock_fileinfo.assert_called_once_with('/path')
 
@@ -275,21 +298,23 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering flows at the prompt correctly calls GetBackgroundFlowsState."""
     mock_prompt.side_effect = ['flows', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'GetBackgroundFlowsState') as mock_flows:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'GetBackgroundFlowsState') as mock_flows):
       self.shell.RunShell()
       mock_flows.assert_called_once()
 
   @parameterized.named_parameters(
-      ('default', 'flows --all', 15),
+      ('default', 'flows --all', 50),
       ('with_count', 'flows --all 30', 30),
-      ('invalid_count', 'flows --all asdf', 15)
+      ('invalid_count', 'flows --all asdf', 50)
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_flows_all(self, in_text, expected_count, mock_prompt):
     """Tests entering flows --all at the prompt correctly calls ListAllFlows."""
     mock_prompt.side_effect = [in_text, EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'ListAllFlows') as mock_list_all:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'ListAllFlows') as mock_list_all):
       self.shell.RunShell()
       mock_list_all.assert_called_once_with(count=expected_count)
 
@@ -298,7 +323,8 @@ class GRRShellREPLTest(parameterized.TestCase):
       ('two_param', 'find a b', 'a', 'b'),
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
-  def test_RunShell_find(self, in_text, expected_param1, expected_param2, mock_prompt):
+  def test_RunShell_find(
+      self, in_text, expected_param1, expected_param2, mock_prompt):
     """Tests entering find at the prompt correctly calls find for the emaulated fs."""
     mock_prompt.side_effect = [in_text, EOFError]
 
@@ -329,7 +355,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests setting the max file size."""
     mock_prompt.side_effect = [in_text, EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'SetMaxFilesize') as mock_set_file_size:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'SetMaxFilesize') as mock_set_file_size):
       self.shell.RunShell()
       mock_set_file_size.assert_called_once_with(expected_param)
 
@@ -386,7 +413,8 @@ class GRRShellREPLTest(parameterized.TestCase):
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_artifact(self, in_text, mock_prompt):
     """Tests 'artifact' at the prompt calls CollectArtifactsInBackground."""
-    with mock.patch.object(self.shell._grr_shell_client, 'CollectArtefact') as mock_collect:
+    with mock.patch.object(self.shell._grr_shell_client,
+                           'CollectArtefact') as mock_collect:
       mock_prompt.side_effect = [in_text, EOFError]
       self.shell.RunShell()
       mock_collect.assert_called_once_with('name', './')
@@ -397,7 +425,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests that if the user hits CTRL+C, they are returned to the prompt."""
     mock_prompt.side_effect = ['info path', KeyboardInterrupt, 'exit', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_stat:
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'FileInfo') as mock_stat:
       mock_stat.side_effect = [KeyboardInterrupt]
 
       self.shell.RunShell()
@@ -409,12 +438,15 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests that if the user hits CTRL+C, they are returned to the prompt."""
     mock_prompt.side_effect = ['info path', 'exit', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_info:
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'FileInfo') as mock_info:
       mock_info.side_effect = [RuntimeError('Test RuntimeError')]
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
         self.shell.RunShell()
-        self.assertIn("Unknown exception: <class 'RuntimeError'> - Test RuntimeError", buf.getvalue())
+        self.assertIn(
+            "Unknown exception: <class 'RuntimeError'> - Test RuntimeError",
+            buf.getvalue())
         mock_exit.assert_called_once()
 
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
@@ -422,7 +454,9 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests resuming a flow works as expected."""
     mock_prompt.side_effect = ['resume flowid', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
+
       self.shell.RunShell()
       mock_resume.assert_called_once_with('flowid', './')
 
@@ -431,7 +465,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests resuming an invalid flow is correctly handled."""
     mock_prompt.side_effect = ['resume flowid', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
       mock_resume.side_effect = errors.NotResumeableFlowTypeError('test error')
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
@@ -445,7 +480,8 @@ class GRRShellREPLTest(parameterized.TestCase):
     """Tests entering detail at the prompt calls the correct method."""
     mock_prompt.side_effect = ['detail flowid', EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'FlowDetail') as mock_detail:
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'FlowDetail') as mock_detail:
 
       self.shell.RunShell()
       mock_detail.assert_called_once_with('flowid')
@@ -504,11 +540,12 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
             mock_collect_timeline,
             mock_get_os,
             mock_resolve_client_id,
-            _mock_init_stubby):
+            _mock_init_http):
     """Set up tests."""
     super().setUp()
 
-    mock_collect_timeline.return_value = open(_SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
+    mock_collect_timeline.return_value = open(
+        _SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
     mock_get_os.return_value = 'Windows'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
@@ -518,7 +555,8 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
   @parameterized.named_parameters(
       ('no_ads', 'info C:/pagefile.sys', '/C:/pagefile.sys', False),
       ('with_ads', 'info C:/pagefile.sys --ads', '/C:/pagefile.sys', True),
-      ('with_ads_but_directory', 'info C:/$Recycle.Bin --ads', '/C:/$Recycle.Bin', False),
+      ('with_ads_but_directory', 'info C:/$Recycle.Bin --ads',
+       '/C:/$Recycle.Bin', False),
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_info(self,
@@ -529,7 +567,8 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
     """Tests entering stat at the prompt correctly calls StatFile."""
     mock_prompt.side_effect = [in_text, EOFError]
 
-    with mock.patch.object(self.shell._grr_shell_client, 'FileInfo') as mock_fileinfo:
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'FileInfo') as mock_fileinfo):
       self.shell.RunShell()
       mock_fileinfo.assert_called_once_with(expected_filepath, ads_expected)
 
@@ -542,8 +581,10 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
     """Tests attempting to refresh a Windows volume."""
     mock_prompt.side_effect = [in_text, EOFError]
 
-    with (mock.patch.object(self.shell._grr_shell_client, 'CollectTimeline') as mock_collect_timeline,
-          mock.patch.object(self.shell._emulated_fs, 'ClearPath') as mock_clear_path):
+    with (mock.patch.object(self.shell._grr_shell_client,
+                            'CollectTimeline') as mock_collect_timeline,
+          mock.patch.object(self.shell._emulated_fs,
+                            'ClearPath') as mock_clear_path):
       self.shell.RunShell()
 
       mock_collect_timeline.assert_called_once_with('D:/', None)
@@ -553,11 +594,11 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
 class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
   """Unit tests for the Grr Shell REPL autompleter for Linux."""
 
-  def setUp(self):
+  def setUp(self):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
-
-    timeline_data = open(_SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+    timeline_data = open(
+        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
     emulated_fs.ParseTimelineFlow(timeline_data)
@@ -566,8 +607,10 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     mock_grr_client.GetOS.return_value = 'Linux'
 
     repl = grr_shell_repl.GRRShellREPL(mock_grr_client)
-    commands = [name for name in repl._commands if not repl._commands[name].is_alias]
-    commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
+    commands = [
+        name for name in repl._commands if not repl._commands[name].is_alias]
+    commands_with_params = [
+        name for name in repl._commands if repl._commands[name].path_param]
 
     self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
@@ -577,6 +620,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     self.assertIsNotNone(self.completer)
 
   @parameterized.named_parameters(
+      # go/keep-sorted start
       ('artefact_f', 'artefact f', ['first', 'fourth'], -1),
       ('artefact_first', 'artefact first', []),
       ('artefact_ir', 'artefact ir', ['first', 'third'], -2),
@@ -586,22 +630,27 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
       ('cd_invalid', 'cd root/xxx/dir', []),
       ('cd_only', 'cd', ['cd'], -2),
       ('cd_r', 'cd r', ['root/'], -1),
-      ('cd_root', 'cd root/', ['..', '.pki/', '.cache/', '.local/', '.ssh/', '.augeas/', r'directory\ with\ spaces/']),
+      ('cd_root', 'cd root/', ['..', '.pki/', '.cache/', '.local/', '.ssh/',
+                               '.augeas/', r'directory\ with\ spaces/']),
       ('cd_space_only', 'cd ', ['..', 'root/', 'odd/']),
       ('cd_spaces', 'cd root/dir', [r'directory\ with\ spaces/'], -3),
       ('collect_space_only', 'collect ', ['..', 'root/', 'odd/', 'root_file']),
-      ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect', 'exit', 'flows', 'find', 'set',
-                     'artefact', 'clear', 'resume', 'detail']),
+      ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect',
+                     'exit', 'flows', 'find', 'set', 'artefact', 'clear',
+                     'resume', 'detail']),
       ('find_space_only', 'find ', []),
       ('hash_space_only', 'hash ', ['..', 'root/', 'odd/', 'root_file']),
       ('help_c', 'help c', ['cd', 'clear', 'collect'], -1),
       ('info_space_only', 'info ', ['..', 'root/', 'odd/', 'root_file']),
       ('ls_bare', 'ls', ['ls'], -2),
       ('ls_r', 'ls r', ['root/', 'root_file'], -1),
-      ('ls_root', 'ls root/', ['..', '.pki/', '.cache/', '.local/', '.ssh/', '.augeas/', '.bashrc', '.profile',
-                               '.wget-hsts', '.lesshst', 'dead.letter', 'xorg.conf.new', r'directory\ with\ spaces/']),
+      ('ls_root', 'ls root/', ['..', '.pki/', '.cache/', '.local/', '.ssh/',
+                               '.augeas/', '.bashrc', '.profile', '.wget-hsts',
+                               '.lesshst', 'dead.letter', 'xorg.conf.new',
+                               r'directory\ with\ spaces/']),
       ('ls_space_only', 'ls ', ['..', 'root/', 'root_file', 'odd/']),
-      ('ls_spaces', r'ls root/directory\ with\ spaces/f', [r'file\ with\ spaces'], -1),
+      ('ls_spaces', r'ls root/directory\ with\ spaces/f',
+       [r'file\ with\ spaces'], -1),
       ('pwd_extra', 'pwd extra', []),
       ('pwd_space_only', 'pwd ', []),
       ('refresh_bare', 'refresh', ['refresh'], -7),
@@ -609,6 +658,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
       ('set_space_only', 'set ', []),
       ('single_char', 'c', ['cd', 'collect', 'clear'], -1),
       ('too_many', 'cd one two', [])
+      # go/keep-sorted end
   )
   def test_GetCompletion(self,
                          in_text,
@@ -619,17 +669,18 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
 
     results = list(self.completer.get_completions(document, None))
     self.assertCountEqual(expected_suggestions, [r.text for r in results])
-    self.assertCountEqual([expected_offset] * len(expected_suggestions), [r.start_position for r in results])
+    self.assertCountEqual([expected_offset] * len(expected_suggestions),
+                          [r.start_position for r in results])
 
 
 class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
   """Unit tests for the Grr Shell REPL autompleter for Windows."""
 
-  def setUp(self):
+  def setUp(self):  # pylint: disable=arguments-differ
     """Set up tests."""
     super().setUp()
-
-    timeline_data = open(_SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
+    timeline_data = open(
+        _SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
     emulated_fs.ParseTimelineFlow(timeline_data)
@@ -638,8 +689,10 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     mock_grr_client.GetOS.return_value = 'Windows'
 
     repl = grr_shell_repl.GRRShellREPL(mock_grr_client)
-    commands = [name for name in repl._commands if not repl._commands[name].is_alias]
-    commands_with_params = [name for name in repl._commands if repl._commands[name].path_param]
+    commands = [
+        name for name in repl._commands if not repl._commands[name].is_alias]
+    commands_with_params = [
+        name for name in repl._commands if repl._commands[name].path_param]
 
     self.completer = grr_shell_repl._GrrShellREPLPromptCompleter(
         emulated_fs, commands, commands_with_params, _ARTIFACT_NAMES)
@@ -649,15 +702,19 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     self.assertIsNotNone(self.completer)
 
   @parameterized.named_parameters(
-      ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect', 'exit', 'flows', 'find', 'set',
-                     'artefact', 'clear', 'resume', 'detail']),
+      ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect',
+                     'exit', 'flows', 'find', 'set', 'artefact', 'clear',
+                     'resume', 'detail']),
       ('single_char', 'c', ['cd', 'collect', 'clear']),
       ('cd_only', 'cd', ['cd']),
       ('cd_error', 'cd /nonexist', []),
-      ('cd_root', 'cd C:/', ['$Recycle.Bin/', '$WinREAgent/', 'Config.Msi/', r'Documents\ and\ Settings/',
-                             'PerfLogs/', r'Program\ Files/', '..']),
-      ('ls_root', 'ls C:/', ['$Recycle.Bin/', '$WinREAgent/', 'Config.Msi/', r'Documents\ and\ Settings/',
-                             'DumpStack.log.tmp', 'hiberfil.sys', 'pagefile.sys', 'PerfLogs/', r'Program\ Files/', '..'])
+      ('cd_root', 'cd C:/', ['$Recycle.Bin/', '$WinREAgent/', 'Config.Msi/',
+                             r'Documents\ and\ Settings/', 'PerfLogs/',
+                             r'Program\ Files/', '..']),
+      ('ls_root', 'ls C:/', ['$Recycle.Bin/', '$WinREAgent/', 'Config.Msi/',
+                             r'Documents\ and\ Settings/', 'DumpStack.log.tmp',
+                             'hiberfil.sys', 'pagefile.sys', 'PerfLogs/',
+                             r'Program\ Files/', '..'])
   )
   def test_GetCompletion(self, in_text, expected_suggestions):
     """Tests the get_completion method."""

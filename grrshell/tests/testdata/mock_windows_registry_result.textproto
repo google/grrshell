@@ -1,4 +1,4 @@
-# proto-file: ops/security/grr/proto/grr_response_proto/api/flow.proto
+# proto-file: grr_response_proto/api/flow.proto
 # proto-message: ApiFlowResult
 payload: {
   [type.googleapis.com/grr.StatEntry] {

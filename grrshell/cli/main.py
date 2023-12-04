@@ -16,6 +16,8 @@
 Supports commands shell, collect, artefact, help
 """
 
+# Addition for copybara sync test
+
 from collections.abc import Sequence
 import datetime
 import os

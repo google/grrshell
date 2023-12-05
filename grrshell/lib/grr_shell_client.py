@@ -220,7 +220,7 @@ class GRRShellClient:
 
   def CollectTimeline(self,
                       path: Optional[str] = None,
-                      existing_timeline: Optional[str] = None) -> str:
+                      existing_timeline: Optional[str] = None) -> bytes:
     """Creates and waits for a GRR timeline flow.
 
     Args:
@@ -264,7 +264,7 @@ class GRRShellClient:
     body = flow_handle.GetCollectedTimelineBody()
     body.WriteToStream(io_stream)
 
-    return io_stream.getvalue().decode()
+    return io_stream.getvalue()
 
   def FileInfo(self, remote_path: str, collect_ads: bool = False) -> str:
     """Synchronously collects file info and hashes for remote files.

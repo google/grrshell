@@ -31,6 +31,8 @@ from grrshell.lib import grr_shell_client
 from grrshell.lib import grr_shell_repl
 
 
+logger = logging.logging.getLogger('grrshell')
+
 # go/keep-sorted start
 _ARTIFACT_HELP = (
     'The artifact to collect from GRR via an ArtifactCollector flow')
@@ -114,8 +116,6 @@ Enable debug logging with --{_DEBUG.name}
 
 Raise bugs here: https://github.com/google/grrshell/issues/new
 """
-
-logger = logging.logging.getLogger('grrshell')
 
 
 def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name

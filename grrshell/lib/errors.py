@@ -33,3 +33,7 @@ class NoGRRApprovalError(Exception):
 class NotResumeableFlowTypeError(Exception):
   """"Raised when attempting to resume a flow which does not support resumption.
   """
+
+
+class TimelineDecodingError(Exception):
+  """Raised when decoding the timeline fails."""

@@ -64,7 +64,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     self.timeline_data = open(
-        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_LINUX, 'rb').read()
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
 
   def test_ParseTimelineFlow(self):
@@ -241,7 +241,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     self.timeline_data = open(
-        _SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_WINDOWS, 'rb').read()
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
 
   def test_ParseTimelineFlow(self):
@@ -373,7 +373,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
     self.assertFalse(self.emulated_fs.RemotePathExists('D:/directory/foobar'))
 
     second_timeline = open(
-        _SAMPLE_TIMELINE_WINDOWS_D_DRIVE, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_WINDOWS_D_DRIVE, 'rb').read()
     self.emulated_fs.ClearPath('D:/', 0)
     self.emulated_fs.ParseTimelineFlow(second_timeline)
 
@@ -388,7 +388,7 @@ class GrrShellEmulatedFSDarwinTest(parameterized.TestCase):
     """Set up."""
     super().setUp()
     self.timeline_data = open(
-        _SAMPLE_TIMELINE_DARWIN, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_DARWIN, 'rb').read()
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Darwin')
 
   def test_ParseTimelineFlow(self):
@@ -550,7 +550,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     self.timeline_data = open(
-        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_LINUX, 'rb').read()
     self.emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
     self.emulated_fs.ParseTimelineFlow(self.timeline_data)
     self.emulated_fs.Cd('/root/.local/share')
@@ -577,9 +577,7 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
         0,
     )
     self.assertIn('.bashrc', self.emulated_fs._root.children['root'].children)
-    overlay_data = open(_SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb').read().decode(
-        'utf-8'
-    )
+    overlay_data = open(_SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb').read()
 
     # Parse overlay.
     self.emulated_fs.ClearPath('/root/.local/share', 75)

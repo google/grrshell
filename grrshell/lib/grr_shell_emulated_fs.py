@@ -28,6 +28,8 @@ from grrshell.lib import utils
 
 logger = logging.logging.getLogger('grrshell')
 
+_ENCODINGS = frozenset(('utf-8', 'cp1251'))
+
 
 # GRR timelines use the Sleuthkit format
 # https://wiki.sleuthkit.org/index.php?title=Body_file
@@ -157,7 +159,7 @@ class GrrShellEmulatedFS:
     return self._pwd.stats.name if self._pwd.stats.name else '/'
 
   def ParseTimelineFlow(self,
-                        timeline_data: str,
+                        timeline_data: bytes,
                         timeline_time: int = 0) -> None:
     """Parses the result of a GRR TimelineFlow into an emulated filesystem.
 
@@ -167,13 +169,25 @@ class GrrShellEmulatedFS:
     """
     logger.debug('Parsing timeline data')
 
-    timeline_data = timeline_data.replace('\r', '')
+    timeline_data = timeline_data.replace(b'\r', b'')
     for line in timeline_data.splitlines():
-      if line[0] == '#':
+      if line.startswith(b'#'):
         continue
       if self._os == utils.WINDOWS:
-        line = line.replace(r'\\', '/')
-      parts = re.split(r'(?<!\\)\|', line)  # Split on |, but not \|
+        line = line.replace(br'\\', b'/')
+
+      decoded: str = None
+      for encoding in _ENCODINGS:
+        try:
+          decoded = line.decode(encoding)
+          break
+        except ValueError:
+          pass
+      if not decoded:
+        logger.debug('Could not decode line %s', line)
+        raise errors.TimelineDecodingError()
+
+      parts = re.split(r'(?<!\\)\|', decoded)  # Split on |, but not \|
       try:
         row = _TimelineRow(*parts)
       except TypeError:

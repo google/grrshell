@@ -64,7 +64,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     super().setUp()
 
     mock_collect_timeline.return_value = open(
-        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_LINUX, 'rb').read()
     mock_get_os.return_value = 'Linux'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
@@ -545,7 +545,7 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
     super().setUp()
 
     mock_collect_timeline.return_value = open(
-        _SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_WINDOWS, 'rb').read()
     mock_get_os.return_value = 'Windows'
     mock_resolve_client_id.return_value = _CLIENT_ID
 
@@ -598,7 +598,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     timeline_data = open(
-        _SAMPLE_TIMELINE_LINUX, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_LINUX, 'rb').read()
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Linux')
     emulated_fs.ParseTimelineFlow(timeline_data)
@@ -680,7 +680,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     """Set up tests."""
     super().setUp()
     timeline_data = open(
-        _SAMPLE_TIMELINE_WINDOWS, 'rb').read().decode('utf-8')
+        _SAMPLE_TIMELINE_WINDOWS, 'rb').read()
 
     emulated_fs = grr_shell_emulated_fs.GrrShellEmulatedFS('Windows')
     emulated_fs.ParseTimelineFlow(timeline_data)

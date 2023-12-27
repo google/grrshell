@@ -277,6 +277,12 @@ _EXPECTED_HASH_WINDOWS_WITH_ADS_RESULT = """C:/Users/username/Downloads/Firefox 
         ReferrerUrl=https://www.mozilla.org/
         HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe"""
 
+_EXPECTED_ZONE_IDENTIFIER = """    Zone.Identifier:
+        [ZoneTransfer]
+        ZoneId=3
+        ReferrerUrl=https://www.mozilla.org/
+        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe"""
+
 _MOCK_WINDOWS_ARTEFACT_REGVALUE_PROTO_FILE = 'grrshell/tests/testdata/mock_windows_registry_result.textproto'
 _MOCK_WINDOWS_ARTEFACT_REGVALUE = flow.FlowResult(data=text_format.Parse(
     open(_MOCK_WINDOWS_ARTEFACT_REGVALUE_PROTO_FILE, 'rb').read(),
@@ -313,6 +319,7 @@ _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_DATA = open(
 _MAX_FILE_SIZE_1GB = 1024 * 1024 * 1024
 
 
+# pylint: enable=line-too-long
 def _BuildMockArtifactDescriptors() -> list[artifact.Artifact]:
   """Builds the mock artifact descriptors list, used by ListArtifacts."""
   artifactdescriptor_proto_files = (
@@ -379,14 +386,37 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     mock_grr_api.Client.return_value.VerifyAccess.side_effect = (
         grr_errors.AccessForbiddenError('No approval'))
 
-    with self.assertRaisesRegex(
-        errors.NoGRRApprovalError,
-        'No approval for client access to C.0000000000000001'):
-      grr_shell_client.GRRShellClient(_TEST_GRR_URL,
-                                      _TEST_GRR_USER,
-                                      _TEST_GRR_PASS,
-                                      _TEST_CLIENT_FQDN,
-                                      _MAX_FILE_SIZE_1GB)
+    shell_client = grr_shell_client.GRRShellClient(
+        _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
+    result = shell_client.CheckAccess()
+    self.assertFalse(result)
+
+  def test_CheckAccess(self):
+    """Tests the CheckAccess method."""
+    result = self.client.CheckAccess()
+    self.assertTrue(result)
+
+  def test_RequestAccess(self):
+    """Tests the RequestAccess method."""
+    with (
+        mock.patch('builtins.input') as mock_input,
+        mock.patch.object(
+            self.client._grr_client, 'CreateApproval') as mock_create_approval):
+      mock_input.side_effect = ['The reason', 'approver1,approver2']
+      mock_create_approval.return_value.data.requestor = 'requestor'
+      mock_create_approval.return_value.data.id = 'request_id'
+
+      with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+        self.client.RequestAccess()
+
+        self.assertIn(
+            'Approval URL: grr-url/v2/clients/'
+            'C.0000000000000001/users/requestor/approvals/request_id',
+            buf.getvalue())
+
+      mock_create_approval.assert_called_once_with(
+          reason='The reason', notified_users=['approver1', 'approver2'])
+      mock_create_approval.return_value.WaitUntilValid.assert_called_once()
 
   def test_Cleanup(self):
     """Tests destructor."""
@@ -404,11 +434,8 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         errors.ClientNotFoundError,
         f'0 potential clients found with search {_TEST_CLIENT_FQDN}'):
-      grr_shell_client.GRRShellClient(_TEST_GRR_URL,
-                                      _TEST_GRR_USER,
-                                      _TEST_GRR_PASS,
-                                      _TEST_CLIENT_FQDN,
-                                      _MAX_FILE_SIZE_1GB)
+      grr_shell_client.GRRShellClient(
+          _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
 
   def test_GetClientID(self):
     """Tests the GetClientID method."""
@@ -419,6 +446,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     """Tests the GetLastSeenTime method."""
     with mock.patch.object(
         self.client._grr_client, 'Get', return_value=_MOCK_LINUX_CLIENT):
+      self.client.StartBackgroundMonitors()
       result = self.client.GetLastSeenTime()
       self.assertEqual(result,
                        datetime.datetime(2023, 5, 24, 1, 24, 23, 783055,
@@ -1433,36 +1461,32 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'ListResults')
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'GetFilesArchive')
-  def test_Resume_GetFile(self,
-                          mock_get_files_archive,
-                          mock_list_results,
-                          mock_wait_until_done):
-    """Tests resuming a GetFile flow."""
+  def test_Reattach_GetFile(self,
+                            mock_get_files_archive,
+                            mock_list_results,
+                            mock_wait_until_done):
+    """Tests reattaching a GetFile flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_GETFILE_RUNNING)
     mock_list_results.return_value = [_MOCK_HASH_WINDOWS_WITH_ADS_ENTRY]
     mock_get_files_archive.return_value = [_MOCK_ZIP_WINDOWS_GETFILE_ADS_DATA]
 
-    results = '\n'.join(self.client.ResumeFlow('GETFILERUNNINGFLOWID'))
+    results = '\n'.join(self.client.ReattachFlow('GETFILERUNNINGFLOWID'))
 
     mock_wait_until_done.assert_called_once()
-    self.assertEqual(results, """    Zone.Identifier:
-        [ZoneTransfer]
-        ZoneId=3
-        ReferrerUrl=https://www.mozilla.org/
-        HostUrl=https://download-installer.cdn.mozilla.net/pub/firefox/releases/114.0.2/win32/en-US/Firefox%20Installer.exe""")
+    self.assertEqual(results, _EXPECTED_ZONE_IDENTIFIER)
 
   @mock.patch.object(_MOCK_APIFLOW_CFF_HASH_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_CFF_HASH_RUNNING, 'ListResults')
-  def test_Resume_ClientFileFinder_Hash(self,
-                                        mock_list_results,
-                                        mock_wait_until_done):
-    """Tests resuming a ClientFileFinder HASH flow."""
+  def test_Reattach_ClientFileFinder_Hash(self,
+                                          mock_list_results,
+                                          mock_wait_until_done):
+    """Tests reattaching a ClientFileFinder HASH flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_CFF_HASH_RUNNING)
     mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
 
-    results = '\n'.join(self.client.ResumeFlow(
+    results = '\n'.join(self.client.ReattachFlow(
         'CLIENTFILEFINDERHASHRUNNINGFLOWID'))
     mock_wait_until_done.assert_called_once()
 
@@ -1474,14 +1498,14 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'GetFilesArchive')
-  def test_Resume_ClientFileFinder_Download(self,
-                                            mock_get_files_archive,
-                                            mock_list_results,
-                                            mock_wait_until_done,
-                                            mock_get,
-                                            mock_running,
-                                            _):
-    """Tests resuming a ClientFileFinder DOWNLOAD flow."""
+  def test_Reattach_ClientFileFinder_Download(self,
+                                              mock_get_files_archive,
+                                              mock_list_results,
+                                              mock_wait_until_done,
+                                              mock_get,
+                                              mock_running,
+                                              _):
+    """Tests reattaching a ClientFileFinder DOWNLOAD flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING)
     mock_get.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING,
@@ -1499,7 +1523,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     actual_states = self.client.GetBackgroundFlowsState()
     self.assertEqual(actual_states, 'No launched flows')
 
-    self.client.ResumeFlow('FLOWID', local_path)
+    self.client.ReattachFlow('FLOWID', local_path)
 
     running, total = self.client.GetRunningFlowCount()
     self.assertEqual(running, 1)
@@ -1544,14 +1568,14 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
   @mock.patch.object(
       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
-  def test_Resume_ArtifactCollectorFlow(self,
-                                        mock_get_files_archive,
-                                        mock_list_results,
-                                        mock_wait_until_done,
-                                        mock_get,
-                                        mock_running,
-                                        _):
-    """Tests resuming an ArtifactCollectorFlow flow."""
+  def test_Reattach_ArtifactCollectorFlow(self,
+                                          mock_get_files_archive,
+                                          mock_list_results,
+                                          mock_wait_until_done,
+                                          mock_get,
+                                          mock_running,
+                                          _):
+    """Tests reattaching an ArtifactCollectorFlow flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING)
     mock_get.side_effect = [_MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING,
@@ -1569,7 +1593,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     actual_states = self.client.GetBackgroundFlowsState()
     self.assertEqual(actual_states, 'No launched flows')
 
-    self.client.ResumeFlow('FLOWID', local_path)
+    self.client.ReattachFlow('FLOWID', local_path)
 
     running, total = self.client.GetRunningFlowCount()
     self.assertEqual(running, 1)
@@ -1609,21 +1633,21 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'WaitUntilDone')
   @mock.patch.object(
       _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'ListResults')
-  def test_Resume_SynchronousArtefact(self,
-                                      mock_list_results,
-                                      mock_wait_until_done):
-    """Tests resumine a synchronous ArtifactColector flow."""
+  def test_Reattach_SynchronousArtefact(self,
+                                        mock_list_results,
+                                        mock_wait_until_done):
+    """Tests reattaching a synchronous ArtifactColector flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING)
     mock_list_results.return_value = [_MOCK_WINDOWS_ARTEFACT_REGVALUE]
 
-    results = '\n'.join(self.client.ResumeFlow(
+    results = '\n'.join(self.client.ReattachFlow(
         'ARTIFACTCOLLECTORFLOWRUNNINGFLOWID'))
     mock_wait_until_done.assert_called_once()
 
     self.assertEqual(results, _EXPECTED_WINDOWS_REGVALUE_RESULT)
 
-  def test_Resume_InvalidFlow(self):
+  def test_Reattach_InvalidFlow(self):
     """Tests attempting to resume an unsupported flow."""
     self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
         _MOCK_APIFLOW_TIMELINE_RUNNING)
@@ -1632,7 +1656,136 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
         errors.NotResumeableFlowTypeError,
         'Flow TIMELINEFLOWID is of type TimelineFlow, not supported for '
         'resumption.'):
-      self.client.ResumeFlow('TIMELINEFLOWID')
+      self.client.ReattachFlow('TIMELINEFLOWID')
+
+  @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'GetFilesArchive')
+  def test_Complete_GetFile(self,
+                            mock_get_files_archive,
+                            mock_list_results,
+                            mock_wait_until_done):
+    """Tests completing a GetFile flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_GETFILE_RUNNING)
+    mock_list_results.return_value = [_MOCK_HASH_WINDOWS_WITH_ADS_ENTRY]
+    mock_get_files_archive.return_value = [_MOCK_ZIP_WINDOWS_GETFILE_ADS_DATA]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.client.CompleteFlow('GETFILERUNNINGFLOWID', './')
+
+      mock_wait_until_done.assert_called_once()
+      self.assertIn(_EXPECTED_ZONE_IDENTIFIER, buf.getvalue())
+
+  @mock.patch.object(_MOCK_APIFLOW_CFF_HASH_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_HASH_RUNNING, 'ListResults')
+  def test_Complete_ClientFileFinder_Hash(self,
+                                          mock_list_results,
+                                          mock_wait_until_done):
+    """Tests completing a ClientFileFinder HASH flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_CFF_HASH_RUNNING)
+    mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.client.CompleteFlow('CLIENTFILEFINDERHASHRUNNINGFLOWID', './')
+
+      mock_wait_until_done.assert_called_once()
+      self.assertIn(_EXPECTED_HASH_WINDOWS_RESULT, buf.getvalue())
+
+  @mock.patch.object(futures.Future, 'exception', return_value=False)
+  @mock.patch.object(futures.Future, 'running')
+  @mock.patch.object(flow.Flow, 'Get')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'GetFilesArchive')
+  def test_Complete_ClientFileFinder_Download(self,
+                                              mock_get_files_archive,
+                                              mock_list_results,
+                                              mock_wait_until_done,
+                                              mock_get,
+                                              mock_running,
+                                              _):
+    """Tests completing a ClientFileFinder DOWNLOAD flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING)
+    mock_get.return_value = _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING
+    mock_running.side_effect = False
+    mock_list_results.return_value = [_MOCK_HASH_LINUX_ENTRY]
+    mock_get_files_archive.return_value = [
+        _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_DATA]
+
+    local_path = os.path.join(self.create_tempdir(), 'C.0000000000000001')
+
+    self.client.CompleteFlow('CLIENTFILEFINDERTERMINATEDFLOWID', local_path)
+
+    mock_wait_until_done.assert_called_once()
+    self.assertTrue(os.path.exists(
+        os.path.join(local_path, 'volume', 'Users', 'username', 'Downloads',
+                     'Firefox Installer.exe')))
+
+  @mock.patch.object(futures.Future, 'exception', return_value=False)
+  @mock.patch.object(futures.Future, 'running')
+  @mock.patch.object(flow.Flow, 'Get')
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'ListResults')
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING, 'GetFilesArchive')
+  def test_Complete_ArtifactCollectorFlow(self,
+                                          mock_get_files_archive,
+                                          mock_list_results,
+                                          mock_wait_until_done,
+                                          mock_get,
+                                          mock_running,
+                                          _):
+    """Tests completing an ArtifactCollectorFlow flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING)
+    mock_get.return_value = _MOCK_APIFLOW_ARTEFACTCOLLECTOR_ALLFILE_RUNNING
+    mock_running.side_effect = False
+    mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
+    mock_get_files_archive.return_value = [
+        _MOCK_ZIP_WINDOWS_ARTIFACTCOLLECTORFLOW_DATA]
+
+    local_path = os.path.join(self.create_tempdir(), 'local_path')
+
+    self.client.CompleteFlow('ARTIFACTCOLLECTORFLOWRUNNINGFLOWID', local_path)
+
+    mock_wait_until_done.assert_called_once()
+    self.assertTrue(os.path.exists(
+        os.path.join(local_path, 'volume', 'Users', 'username', 'Downloads',
+                     'Firefox Installer.exe')))
+
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING, 'ListResults')
+  def test_Complete_SynchronousArtefact(self,
+                                        mock_list_results,
+                                        mock_wait_until_done):
+    """Tests completing a synchronous ArtifactColector flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING)
+    mock_list_results.return_value = [_MOCK_WINDOWS_ARTEFACT_REGVALUE]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.client.CompleteFlow('ARTIFACTCOLLECTORFLOWRUNNINGFLOWID', './')
+
+      mock_wait_until_done.assert_called_once()
+      self.assertIn(_EXPECTED_WINDOWS_REGVALUE_RESULT, buf.getvalue())
+
+  def test_Complete_InvalidFlow(self):
+    """Tests attempting to complete an unsupported flow."""
+    self.mock_grr_api.Client.return_value.Flow.return_value.Get.return_value = (
+        _MOCK_APIFLOW_TIMELINE_RUNNING)
+
+    with self.assertRaisesRegex(
+        errors.NotResumeableFlowTypeError,
+        'Flow TIMELINEFLOWID is of type TimelineFlow, not supported for '
+        'resumption.'):
+      self.client.CompleteFlow('TIMELINEFLOWID', './')
 
   def test_GetSupportedArtifacts(self):
     """Tests the GetSupportedArtifacts method."""

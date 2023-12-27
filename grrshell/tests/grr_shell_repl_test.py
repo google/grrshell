@@ -69,6 +69,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     mock_resolve_client_id.return_value = _CLIENT_ID
 
     shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.domain.com')
+    shell_client.StartBackgroundMonitors()
     self.shell = grr_shell_repl.GRRShellREPL(shell_client)
 
   def test_Init(self):
@@ -455,7 +456,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     mock_prompt.side_effect = ['resume flowid', EOFError]
 
     with mock.patch.object(
-        self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
+        self.shell._grr_shell_client, 'ReattachFlow') as mock_resume:
 
       self.shell.RunShell()
       mock_resume.assert_called_once_with('flowid', './')
@@ -466,7 +467,7 @@ class GRRShellREPLTest(parameterized.TestCase):
     mock_prompt.side_effect = ['resume flowid', EOFError]
 
     with mock.patch.object(
-        self.shell._grr_shell_client, 'ResumeFlow') as mock_resume:
+        self.shell._grr_shell_client, 'ReattachFlow') as mock_resume:
       mock_resume.side_effect = errors.NotResumeableFlowTypeError('test error')
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
@@ -550,6 +551,7 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
     mock_resolve_client_id.return_value = _CLIENT_ID
 
     shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.domain.com')
+    shell_client.StartBackgroundMonitors()
     self.shell = grr_shell_repl.GRRShellREPL(shell_client)
 
   @parameterized.named_parameters(

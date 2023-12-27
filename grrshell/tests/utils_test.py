@@ -21,9 +21,6 @@ from absl.testing import parameterized
 from grrshell.lib import utils
 
 
-# pylint: disable=protected-access
-
-
 class UnixTSToReadableTest(parameterized.TestCase):
   """Unit test for UnixTSToReadable utility method."""
 

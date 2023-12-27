@@ -577,7 +577,8 @@ class GrrShellEmulatedFSRefreshTest(parameterized.TestCase):
         0,
     )
     self.assertIn('.bashrc', self.emulated_fs._root.children['root'].children)
-    overlay_data = open(_SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb').read()
+    overlay_data = open(
+        _SAMPLE_TIMELINE_LINUX_OVERLAY, 'rb').read()
 
     # Parse overlay.
     self.emulated_fs.ClearPath('/root/.local/share', 75)

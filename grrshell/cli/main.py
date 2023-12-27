@@ -41,10 +41,11 @@ _DEBUG_HELP = 'Enable debug logging'
 _GRR_PASSWORD_HELP = 'GRR password'
 _GRR_SERVER_HELP = 'GRR HTTP Endpoint'
 _GRR_USERNAME_HELP = 'GRR username'
+_FLOW_HELP = 'A Flow ID'
 _INITIAL_TIMELINE_HELP = (
     'Specify an existing timeline flow to use instead of looking for a recent '
     'flow, or launching a new timeline flow. (Optional)')
-_LOCAL_PATH_HELP = 'Location to store the collected files'
+_LOCAL_PATH_HELP = 'Location to store the collected files. Default: "./"'
 _MAX_FILE_SIZE_HELP = (
     'The max file size for GRR collection. 0 for the GRR default. (Optional)')
 _NO_INITIAL_TIMELINE_HELP = (
@@ -59,11 +60,13 @@ _ARTEFACT = flags.DEFINE_string(
 _CLIENT = flags.DEFINE_string(
     name='client', default='', required=False, help=_CLIENT_HELP)
 _DEBUG = flags.DEFINE_bool(name='debug', default=False, help=_DEBUG_HELP)
+_FLOW = flags.DEFINE_string(
+    name='flow', default='', required=False, help=_FLOW_HELP)
 _INITIAL_TIMELINE = flags.DEFINE_string(
     name='initial-timeline', default='', required=False,
     help=_INITIAL_TIMELINE_HELP)
 _LOCAL_PATH = flags.DEFINE_string(
-    name='local-path', default='', required=False, help=_LOCAL_PATH_HELP)
+    name='local-path', default='./', required=False, help=_LOCAL_PATH_HELP)
 _MAX_FILE_SIZE = flags.DEFINE_string(
     name='max-file-size', default='0', required=False, help=_MAX_FILE_SIZE_HELP)
 _NO_INITIAL_TIMELINE = flags.DEFINE_bool(
@@ -81,7 +84,7 @@ flags.DEFINE_alias('user', 'username')
 flags.DEFINE_alias('pass', 'password')
 
 
-_USAGE = f"""grr_shell {{shell,collect,artefact,help}}
+_USAGE = f"""grr_shell {{shell,collect,artefact,complete,help}}
 
 shell - Start an (emulated) interactive shell with CLIENT_ID (default if no command specified)
   --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
@@ -110,6 +113,15 @@ artefact - Schedule and collect an ArtifactCollector flow
   --{_LOCAL_PATH.name} {_LOCAL_PATH_HELP}
   --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
 
+complete - Complete an existing flow, downloading the results
+  --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
+  --{_GRR_PASSWORD.name} {_GRR_PASSWORD_HELP}
+  --{_GRR_SERVER.name} {_GRR_SERVER_HELP}
+  --{_CLIENT.name} {_CLIENT_HELP}
+  --{_FLOW.name} {_FLOW_HELP}
+  --{_LOCAL_PATH.name} {_LOCAL_PATH_HELP}
+  --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
+
 help - Display this text and exit
 
 Enable debug logging with --{_DEBUG.name}
@@ -118,7 +130,7 @@ Raise bugs here: https://github.com/google/grrshell/issues/new
 """
 
 
-def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
+def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name,too-many-branches,too-many-return-statements
   """Main driver.
 
   Args:
@@ -159,27 +171,42 @@ def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name
                                              _CLIENT.value,
                                              max_size)
 
-  except (errors.NoGRRApprovalError, errors.ClientNotFoundError) as error:
+  except (errors.ClientNotFoundError) as error:
     logger.error('Error accessing grr client', exc_info=True)
     print(str(error))
     return
 
-  if argv[0] == 'collect':
-    if not all((_REMOTE_PATH.value, _LOCAL_PATH.value)):
-      print(_USAGE)
-      return
-    client.CollectFiles(_REMOTE_PATH.value, _LOCAL_PATH.value)
-  elif argv[0] == 'shell':
-    shell = grr_shell_repl.GRRShellREPL(
-        client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
-    shell.RunShell()
-  elif argv[0] in ('artifact', 'artefact'):
-    if not all((_ARTEFACT.value, _LOCAL_PATH.value)):
-      print(_USAGE)
-      return
-    client.ScheduleAndDownloadArtefact(_ARTEFACT.value, _LOCAL_PATH.value)
-  else:
-    print(f'Unrecognised command\n{_USAGE}')
+  if not client.CheckAccess():
+    print('No client access - Requesting....')
+    client.RequestAccess()
+
+  try:
+    if argv[0] == 'collect':
+      if not _REMOTE_PATH.value:
+        print(_USAGE)
+        return
+      client.CollectFiles(_REMOTE_PATH.value, _LOCAL_PATH.value)
+    elif argv[0] == 'shell':
+      client.StartBackgroundMonitors()
+      shell = grr_shell_repl.GRRShellREPL(
+          client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
+      shell.RunShell()
+    elif argv[0] in ('artifact', 'artefact'):
+      if not _ARTEFACT.value:
+        print(_USAGE)
+        return
+      client.ScheduleAndDownloadArtefact(
+          _ARTEFACT.value, _LOCAL_PATH.value)
+    elif argv[0] == 'complete':
+      if not _FLOW.value:
+        print(_USAGE)
+        return
+      client.CompleteFlow(_FLOW.value, _LOCAL_PATH.value)
+    else:
+      print(f'Unrecognised command\n{_USAGE}')
+  except Exception as error:
+    logger.error('Unknown error encountered', exc_info=True)
+    raise error
 
 
 def _SetUpLogging() -> None:

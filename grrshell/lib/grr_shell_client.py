@@ -105,6 +105,7 @@ class GRRShellClient:
     self._launched_flows: dict[str, _LaunchedFlow] = {}
     self._collection_threads = futures.ThreadPoolExecutor(max_workers=40)
 
+    self._grr_endpoint = grr_server
     self._grr_stubby = grr_api.InitHttp(api_endpoint=grr_server, auth=(grr_user, grr_pass))
     self._grr_client_id = self._ResolveClientID(client_id)
     self._grr_client = self._grr_stubby.Client(self._grr_client_id)
@@ -114,23 +115,15 @@ class GRRShellClient:
     self.last_timeline_time = 0
     self._formatter = formatters.GRRShellFormatter()
 
-    try:
-      self._grr_client.VerifyAccess()
-    except grr_errors.AccessForbiddenError as exc:
-      raise errors.NoGRRApprovalError(
-          f'No approval for client access to {self._grr_client_id}') from exc
-
     self._artefact_list_mutex: threading.Lock = threading.Lock()
     threading.Thread(
         target=self._RetrieveSupportedArtefacts, daemon=True).start()
 
     self._flow_monitor = client_monitors.FlowMonitor(
         self._grr_stubby.Client(self._grr_client_id))
-    self._flow_monitor.StartMonitor()
 
     self._last_seen_monitor = client_monitors.LastSeenMonitor(
         self._grr_stubby.Client(self._grr_client_id))
-    self._last_seen_monitor.StartMonitor()
 
   def WaitForBackgroundCompletions(self):
     """Finish pending background flows."""
@@ -156,6 +149,42 @@ class GRRShellClient:
                                                         error.__traceback__)))
         if not launched.exception_displayed:
           print(f'{launched.flow.flow_id} - {str(launched.future.exception())}')
+
+  def CheckAccess(self) -> bool:
+    """Checks if the operator has permissions to access the client.
+
+    Returns:
+      True if the operator has access, False otherwise.
+    """
+    try:
+      self._grr_client.VerifyAccess()
+    except grr_errors.AccessForbiddenError:
+      return False
+    return True
+
+  def RequestAccess(self) -> None:
+    """Creates an access request and waits for the request to be granted."""
+    reason = input('Enter access justification: ')
+    approvers = input('Enter comma separated approvers: ').split(',')
+
+    approval_req = self._grr_client.CreateApproval(
+        reason=reason, notified_users=approvers)
+
+    logger.debug('Approval request sent: %s', approval_req.data)
+
+    print(
+        f'Approval URL: {self._grr_endpoint}/v2/clients/'
+        f'{self._grr_client_id}/users/{approval_req.data.requestor}/approvals/'
+        f'{approval_req.data.id}\n<CTRL+C> to abandon session.')
+
+    approval_req.WaitUntilValid()
+
+    print('Approval received, proceeding.')
+
+  def StartBackgroundMonitors(self) -> None:
+    """Starts background monitors."""
+    self._flow_monitor.StartMonitor()
+    self._last_seen_monitor.StartMonitor()
 
   def GetOS(self) -> str:
     """Gets the operating system of the client.
@@ -500,9 +529,9 @@ class GRRShellClient:
           f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
     return '\n'.join(lines)
 
-  def ResumeFlow(self,
-                 flow_id: str,
-                 local_path: Optional[str] = None) -> list[str]:
+  def ReattachFlow(self,
+                   flow_id: str,
+                   local_path: Optional[str] = None) -> list[str]:
     """Resumes an existing flow, not attached to this GRRShell session.
 
     Adds the existing launched flow to the background flows.
@@ -538,6 +567,28 @@ class GRRShellClient:
     self._launched_flows[flow_handle.flow_id] = _LaunchedFlow(future,
                                                               flow_handle)
     return [f'Queued {flow_handle.flow_id} for completion.']
+
+  def CompleteFlow(self, flow_id: str, local_path: str) -> None:
+    """Waits for completion of a flow, downloading or displaying the results.
+
+    Args:
+      flow_id: The Flow ID to wait for and process results of.
+      local_path: The local path to download a result. Used only for flows that
+        download files to the local filesystem.
+    """
+    flow_handle = self._grr_client.Flow(flow_id).Get()
+
+    if flow_handle.data.name not in _RESUMABLE_FLOW_TYPES:
+      raise errors.NotResumeableFlowTypeError(
+          f'Flow {flow_handle.flow_id} is of type {flow_handle.data.name}, '
+          'not supported for resumption.')
+
+    if self._IsFlowSynchronous(flow_handle):
+      flow_handle.WaitUntilDone()
+      lines = self._formatter.FormatFlowResult(flow_handle)
+      print('\n'.join(lines))
+    else:
+      self._WaitAndCompleteFlow(flow_handle, local_path)
 
   def FlowDetail(self, flow_id: str) -> str:
     """Fetches detailed information on a flow.

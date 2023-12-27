@@ -120,9 +120,6 @@ _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_MULTI = [
     'Browser: FIREFOX', 'Browser: CHROME', 'Browser: INTERNET_EXPLORER']
 
 
-# pylint: disable=protected-access
-
-
 class FlowArgsParsersTest(parameterized.TestCase):
   """Unit tests for GRR Flow Args parsing functions."""
 

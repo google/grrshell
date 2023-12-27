@@ -592,7 +592,7 @@ class GRRShellREPL:
       return
 
     try:
-      print('\n'.join(self._grr_shell_client.ResumeFlow(params[0], './')))
+      print('\n'.join(self._grr_shell_client.ReattachFlow(params[0], './')))
     except errors.NotResumeableFlowTypeError as error:
       print(str(error))
 

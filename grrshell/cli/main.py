@@ -31,9 +31,6 @@ from grrshell.lib import errors
 from grrshell.lib import grr_shell_client
 from grrshell.lib import grr_shell_repl
 
-import traceback
-import sys
-
 
 logger = logging.logging.getLogger('grrshell')
 
@@ -316,6 +313,7 @@ class Main:
 
 
 def main():
+  """Main."""
   Main.DefineFlags()
   m = Main()
   app.run(m.main)

@@ -98,6 +98,8 @@ _RESUME_HELP_LONG = """\tRequires a Flow ID argument. (Re)attaches the flow to t
 \tSynchronous flows will display the flow result."""
 _SET_LONG_HELP = """\tCurrently supported shell env values:
 \t* max-file-size Specify a max file size for file collections. If not specified, the GRR default of 500MB is used."""
+_VOLUMES_LONG_HELP = """\t List volumes connected to the client.
+\tNon-root volumes do not have timelines collected. Use "refresh <volume> to browse the volume EFS."""
 # pylint: enable=line-too-long
 
 # go/keep-sorted start
@@ -125,6 +127,8 @@ _REFRESH_HELP = _Help('\tRefresh remote emulated FS (synchronous)',
                       _REFRESH_HELP_LONG)
 _RESUME_HELP = _Help('\tResume an existing flow', _RESUME_HELP_LONG)
 _SET_HELP = _Help('\tSet a shell value', _SET_LONG_HELP)
+_VOLUMES_HELP = _Help('\tList volumes connected to the client',
+                      _VOLUMES_LONG_HELP)
 # go/keep-sorted end
 
 
@@ -219,7 +223,8 @@ class GRRShellREPL:
         _Command('quit', self._Exit, _EXIT_HELP, is_alias=True),
         _Command('refresh', self._Refresh, _REFRESH_HELP, path_param=True),
         _Command('resume', self._Resume, _RESUME_HELP),
-        _Command('set', self._Set, _SET_HELP)
+        _Command('set', self._Set, _SET_HELP),
+        _Command('volumes', self._Volumes, _VOLUMES_HELP),
         # go/keep-sorted end
     ]
     return {c.name: c for c in commands}
@@ -340,6 +345,8 @@ class GRRShellREPL:
       path = self._emulated_fs.GetPWD()
     elif windows_volume_root_regex.match(path):
       path += '/'
+
+    logger.debug('Refreshing timeline for %s', path)
 
     timeline_data = self._grr_shell_client.CollectTimeline(
         path, existing_timeline)
@@ -604,6 +611,11 @@ class GRRShellREPL:
       return
 
     print(self._grr_shell_client.FlowDetail(params[0]))
+
+  def _Volumes(self, params: Sequence[str]) -> None:
+    """Lists information for all voilumes attached to the client."""
+    del params  # unused
+    print(self._grr_shell_client.DescribeVolumes())
 
 
 class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):

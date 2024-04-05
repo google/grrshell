@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unit tests for the Grr Shell client."""
 
-# pylint: disable=wrong-import-order
+# pylint: disable=wrong-import-order,ungrouped-imports
 from concurrent import futures
 import contextlib
 import datetime
@@ -21,6 +21,7 @@ import io
 import os
 import sys
 from unittest import mock
+import unittest
 
 from google.protobuf import text_format
 from grr_api_client import api as grr_api
@@ -88,6 +89,12 @@ _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING_PROTO_FILE = 'grrshell/tests/t
 _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING = flow.Flow(
     data=text_format.Parse(open(
         _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WINREGKEY_RUNNING_PROTO_FILE, 'rb').read(),
+                           flow_pb2.ApiFlow()), context=mock.MagicMock())
+
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_artifactcollector_wmilogicaldisks_running.textproto'
+_MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING = flow.Flow(
+    data=text_format.Parse(open(
+        _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING_PROTO_FILE, 'rb').read(),
                            flow_pb2.ApiFlow()), context=mock.MagicMock())
 
 _MOCK_APIFLOW_CFF_HASH_RUNNING_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_clientfilefinder_hash_running.textproto'
@@ -291,6 +298,35 @@ _MOCK_WINDOWS_ARTEFACT_REGVALUE = flow.FlowResult(data=text_format.Parse(
 _EXPECTED_WINDOWS_REGVALUE_RESULT = """    /HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Windows NT/CurrentVersion/InstallDate (REG_DWORD)
         integer: 12345"""
 
+_MOCK_WINDOWS_ARTEFACT_VOLUME_C_PROTO_FILE = 'grrshell/tests/testdata/mock_volume_windows_c.textproto'
+_MOCK_WINDOWS_ARTEFACT_VOLUME_C = flow.FlowResult(data=text_format.Parse(
+    open(_MOCK_WINDOWS_ARTEFACT_VOLUME_C_PROTO_FILE, 'rb').read(),
+    flow_pb2.ApiFlowResult()))
+
+_MOCK_WINDOWS_ARTEFACT_VOLUME_D_PROTO_FILE = 'grrshell/tests/testdata/mock_volume_windows_d.textproto'
+_MOCK_WINDOWS_ARTEFACT_VOLUME_D = flow.FlowResult(data=text_format.Parse(
+    open(_MOCK_WINDOWS_ARTEFACT_VOLUME_D_PROTO_FILE, 'rb').read(),
+    flow_pb2.ApiFlowResult()))
+
+_EXPECTED_WINDOWS_VOLUMES_RESULT = """Device ID - C:
+    Name:                 C:
+    Volume Name:          c_drive
+    Volume Serial Number: 01234567
+    Description:          Local Fixed Disk
+    Drive Type:           DRIVE_FIXED
+    File System:          NTFS
+    Size:                 2047370850304 (1.9 TiB)
+    Free Space:           1654566748160 (1.5 TiB) - 80.81%
+Device ID - D:
+    Name:                 D:
+    Volume Name:          THUMBDRIVE
+    Volume Serial Number: 98765432
+    Description:          Removable Disk
+    Drive Type:           DRIVE_REMOVABLE
+    File System:          FAT32
+    Size:                 8002781184 (7.5 GiB)
+    Free Space:           8002740224 (7.5 GiB) - 100.0%"""
+
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE = 'grrshell/tests/testdata/file_collect_darwin.zip'
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_DATA = open(
     _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE, 'rb').read()
@@ -300,6 +336,9 @@ _MOCK_ZIP_LINUX_CLIENTFILEFINDER_DATA = open(
 _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FILE = 'grrshell/tests/testdata/file_collect_windows.zip'
 _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_DATA = open(
     _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FILE, 'rb').read()
+_MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FAT32_FILE = 'grrshell/tests/testdata/file_collect_windows_fat32.zip'
+_MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FAT32_DATA = open(
+    _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FAT32_FILE, 'rb').read()
 _MOCK_ZIP_DARWIN_ARTIFACTCOLLECTORFLOW_FILE = 'grrshell/tests/testdata/artifact_collect_darwin.zip'
 _MOCK_ZIP_DARWIN_ARTIFACTCOLLECTORFLOW_DATA = open(
     _MOCK_ZIP_DARWIN_ARTIFACTCOLLECTORFLOW_FILE, 'rb').read()
@@ -315,6 +354,9 @@ _MOCK_ZIP_WINDOWS_GETFILE_ADS_DATA = open(
 _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_FILE = 'grrshell/tests/testdata/getfile_ads_empty.zip'
 _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_DATA = open(
     _MOCK_ZIP_WINDOWS_GETFILE_ADS_EMPTY_FILE, 'rb').read()
+
+_SAMPLE_TIMELINE_LINUX = 'grrshell/tests/testdata/sample_timeline_linux'
+_SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 
 _MAX_FILE_SIZE_1GB = 1024 * 1024 * 1024
 
@@ -343,6 +385,15 @@ def _BuildMockArtifactDescriptors() -> list[artifact.Artifact]:
   return to_return
 
 
+def _MockGetFromFlowList(self) -> flow.Flow:
+  """Based on the flows listed in _MOCK_APIFLOW_LISTFLOWS, return the one matching the Flow ID."""
+  # TODO(ramoj): Use this method for all mocked calls to Flow.Get()
+  for item in _MOCK_APIFLOW_LISTFLOWS_FLOWS.items:
+    if self.data.flow_id == item.flow_id:
+      return flow.Flow(data=item, context=mock.MagicMock())
+  raise RuntimeError('Failure in mocking of Flow.Get() - Flow not found.')
+
+
 # pylint: disable=protected-access
 # pylint: enable=line-too-long
 
@@ -367,6 +418,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
 
     self.client = grr_shell_client.GRRShellClient(
         _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
+    self.client._pathspec_mapper['/'] = jobs_pb2.PathSpec.OS
 
   def test_Init(self):
     """Tests initialisation."""
@@ -396,18 +448,25 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
     result = self.client.CheckAccess()
     self.assertTrue(result)
 
-  def test_RequestAccess(self):
+  @parameterized.named_parameters(
+      ('no_duration', None, 0),
+      ('with_duration', '25', 25),
+  )
+  @unittest.skip('Expiration duration not available in current public GRR API library version')
+  def test_RequestAccessSuccess(self,
+                                duration_input: str,
+                                expected_duration: int):
     """Tests the RequestAccess method."""
     with (
         mock.patch('builtins.input') as mock_input,
         mock.patch.object(
             self.client._grr_client, 'CreateApproval') as mock_create_approval):
-      mock_input.side_effect = ['The reason', 'approver1,approver2']
+      mock_input.side_effect = ['reason', 'approver1,approver2', duration_input]
       mock_create_approval.return_value.data.requestor = 'requestor'
       mock_create_approval.return_value.data.id = 'request_id'
 
       with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        self.client.RequestAccess()
+        result = self.client.RequestAccess()
 
         self.assertIn(
             'Approval URL: grr-url/v2/clients/'
@@ -415,8 +474,34 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
             buf.getvalue())
 
       mock_create_approval.assert_called_once_with(
-          reason='The reason', notified_users=['approver1', 'approver2'])
+          reason='reason',
+          notified_users=['approver1', 'approver2'],
+          expiration_duration_days=expected_duration)
       mock_create_approval.return_value.WaitUntilValid.assert_called_once()
+      self.assertTrue(result)
+
+  @parameterized.named_parameters(
+      ('negative_duration', '-5', 'Invalid duration: -5'),
+      ('non_int_duration', 'asdf', 'Invalid duration: asdf'),
+  )
+  @unittest.skip('Expiration duration not available in current public GRR API library version')
+  def test_RequestAccessFailure(self,
+                                duration_input: str,
+                                expected_message: str):
+    """Tests the RequestAccess method failure methods."""
+    with (
+        mock.patch('builtins.input') as mock_input,
+        mock.patch.object(
+            self.client._grr_client, 'CreateApproval') as mock_create_approval):
+      mock_input.side_effect = ['reason', 'approver1,approver2', duration_input]
+
+      with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+        result = self.client.RequestAccess()
+
+        self.assertIn(expected_message, buf.getvalue())
+
+      mock_create_approval.assert_not_called()
+      self.assertFalse(result)
 
   def test_Cleanup(self):
     """Tests destructor."""
@@ -452,104 +537,73 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
                        datetime.datetime(2023, 5, 24, 1, 24, 23, 783055,
                                          tzinfo=datetime.timezone.utc))
 
-  @mock.patch.object(flow.Flow, 'Get', autospec=True)
-  def test_GetLastTimelineCorrect(self, mock_get):
+  @mock.patch('datetime.datetime', wraps=datetime.datetime)
+  def test_GetLastTimelineCorrect(self, mock_dt):
     """Tests the GetLastTimeline method when there is a recent one."""
-    with (
-        mock.patch.object(
-            self.client._grr_client,
-            'ListFlows',
-            return_value=_MOCK_APIFLOW_LISTFLOWS,
-        ),
-        mock.patch.object(
-            flow.Flow, 'ListResults', autospec=True
-        ) as mock_list_results
-    ):
-      mock_get.side_effect = _MOCK_APIFLOW_LISTFLOWS[2:]
-      mock_result = mock.Mock()
-      mock_result.timestamp = 9999999999999999999
-      mock_list_results.return_value = [mock_result]
+    with (mock.patch.object(self.client._grr_client,
+                            'ListFlows',
+                            return_value=_MOCK_APIFLOW_LISTFLOWS),
+          mock.patch.object(flow.Flow, 'Get', new=_MockGetFromFlowList)):
+      # "Now" is half of the staleness threshold past the epoch. All the flows
+      # returned are at 1 second past the epoch, so they are not stale.
+      mock_dt.now.return_value = datetime.datetime.fromtimestamp(
+          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          tz=datetime.timezone.utc)
+
       result = self.client.GetLastTimeline()
+
       self.assertStartsWith(result, 'CORRECT')
 
-  @mock.patch.object(flow.Flow, 'Get')
-  def test_GetLastTimelineNotFound(self, mock_get):
+  @mock.patch('datetime.datetime', wraps=datetime.datetime)
+  def test_GetLastTimelineNotFound(self, mock_dt):
     """Tests the GetLastTimeline method when there is no recent one."""
-    with (
-        mock.patch.object(
-            self.client._grr_client,
-            'ListFlows',
-            return_value=_MOCK_APIFLOW_LISTFLOWS,
-        ),
-        mock.patch.object(
-            flow.Flow, 'ListResults', autospec=True
-        ) as mock_list_results
-    ):
-      mock_get.side_effect = _MOCK_APIFLOW_LISTFLOWS[1:]
-      mock_result = mock.Mock()
-      mock_result.timestamp = 100
-      mock_list_results.return_value = [mock_result]
+    with (mock.patch.object(self.client._grr_client,
+                            'ListFlows',
+                            return_value=_MOCK_APIFLOW_LISTFLOWS),
+          mock.patch.object(flow.Flow, 'Get', new=_MockGetFromFlowList)):
+      # "Now" is twice the staleness threshold past the epoch. All the flows
+      # returned are at 1 second past the epoch, so they are stale.
+      mock_dt.now.return_value = datetime.datetime.fromtimestamp(
+          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() * 2,
+          tz=datetime.timezone.utc)
+
       result = self.client.GetLastTimeline()
+
       self.assertIsNone(result)
 
-  @mock.patch.object(flow.Flow, 'Get')
-  def test_GetLastTimelineOldAndNew(self, mock_get):
+  @mock.patch('datetime.datetime', wraps=datetime.datetime)
+  def test_GetLastTimelineOldAndNew(self, mock_dt):
     """Tests the GetLastTimeline method when there is one old and one new one."""
-    with (
-        mock.patch.object(
-            self.client._grr_client,
-            'ListFlows',
-            return_value=_MOCK_APIFLOW_LISTFLOWS,
-        ),
-        mock.patch.object(
-            flow.Flow, 'ListResults', autospec=True
-        ) as mock_list_results
-    ):
-      mock_get.side_effect = _MOCK_APIFLOW_LISTFLOWS[2:]
-      mock_result_one = mock.Mock()
-      mock_result_one.timestamp = 9999999999999999999
-      mock_result_two = mock.Mock()
-      mock_result_two.timestamp = 100
-      mock_list_results.side_effect = [[mock_result_one], [mock_result_two]]
-      result = self.client.GetLastTimeline()
-      self.assertEqual(result, 'CORRECT_LIN')
+    with (mock.patch.object(self.client._grr_client,
+                            'ListFlows',
+                            return_value=_MOCK_APIFLOW_LISTFLOWS),
+          mock.patch.object(flow.Flow, 'Get', new=_MockGetFromFlowList)):
+      # "Now" is half of the staleness threshold past the epoch. All the flows
+      # returned are at 1 second past the epoch, so they are not stale.
+      mock_dt.now.return_value = datetime.datetime.fromtimestamp(
+          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          tz=datetime.timezone.utc)
 
-  @mock.patch.object(flow.Flow, 'Get')
-  def test_GetLastTimelineWindowsRoot(self, mock_get):
-    """Tests the GetLastTimeline method when there is a Windows root."""
-    with (
-        mock.patch.object(
-            self.client._grr_client,
-            'ListFlows',
-            return_value=_MOCK_APIFLOW_LISTFLOWS,
-        ),
-        mock.patch.object(
-            flow.Flow, 'ListResults', autospec=True
-        ) as mock_list_results
-    ):
-      mock_get.side_effect = _MOCK_APIFLOW_LISTFLOWS[2:]
-      mock_result_one = mock.Mock()
-      mock_result_one.timestamp = 100
-      mock_result_two = mock.Mock()
-      mock_result_two.timestamp = 9999999999999999999
-      mock_list_results.side_effect = [
-          [mock_result_one],
-          [mock_result_two]
-      ]
       result = self.client.GetLastTimeline()
-      self.assertEqual(result, 'CORRECT_WIN')
+
+      self.assertEqual(result, 'CORRECT_LIN_2_SECOND')
 
   def test_CollectTimelineNew(self):
     """Tests the CollectTimeline method with no existing timeline specified."""
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs'
                             ) as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow'
-                            ) as mock_create_flow):
+                            ) as mock_create_flow,
+          mock.patch('io.BytesIO') as mock_bytesio):
       mock_result_1 = mock.Mock()
       mock_result_1.timestamp = 1
       mock_result_2 = mock.Mock()
       mock_result_2.timestamp = 2
       mock_create_flow.return_value.ListResults.return_value = [mock_result_1]
+      mock_create_flow.return_value.args.root = b'/'
+      mock_bytesio.getvalue.return_value = open(
+          _SAMPLE_TIMELINE_LINUX, 'rb').read()
+
       self.client.CollectTimeline()
 
       mock_create_flow_args.assert_called_once_with('TimelineFlow')
@@ -558,25 +612,39 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       mock_create_flow.return_value.WaitUntilDone.assert_called_once()
       mock_create_flow.return_value.GetCollectedTimelineBody.assert_called_once()
       self.assertEqual(self.client.last_timeline_time, 1)
+      self.assertDictEqual(self.client._pathspec_mapper._path_ps_map,
+                           {'/': jobs_pb2.PathSpec.OS})
 
   def test_CollectTimelineExisting(self):
     """Tests the CollectTimeline method with a specified existing timeline."""
-    with mock.patch.object(self.client._grr_client, 'Flow') as mock_flow:
+    with (mock.patch.object(self.client._grr_client, 'Flow') as mock_flow,
+          mock.patch('io.BytesIO') as mock_bytesio):
       mock_flow.return_value.Get.return_value.ListResults.return_value = []
+      mock_flow.return_value.Get.return_value.args.root = b'/'
+      mock_bytesio.getvalue.return_value = open(
+          _SAMPLE_TIMELINE_LINUX, 'rb').read()
+
       self.client.CollectTimeline(existing_timeline='ABCDE12345')
 
       mock_flow.assert_called_once_with('ABCDE12345')
       mock_flow.return_value.Get.assert_called_once()
       mock_flow.return_value.Get.return_value.WaitUntilDone.assert_called_once()
       mock_flow.return_value.Get.return_value.GetCollectedTimelineBody.assert_called_once()
+      self.assertDictEqual(self.client._pathspec_mapper._path_ps_map,
+                           {'/': jobs_pb2.PathSpec.OS})
 
   def test_CollectTimelinePath(self):
     """Tests the CollectTimeline method with a specified path."""
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs',
                             return_value=mock.Mock()) as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow',
-                            return_value=mock.Mock()) as mock_create_flow):
+                            return_value=mock.Mock()) as mock_create_flow,
+          mock.patch('io.BytesIO') as mock_bytesio):
       mock_create_flow.return_value.ListResults.return_value = []
+      mock_create_flow.return_value.args.root = b'/'
+      mock_bytesio.getvalue.return_value = open(
+          _SAMPLE_TIMELINE_LINUX, 'rb').read()
+
       self.client.CollectTimeline(path='/home/testuser/')
 
       mock_create_flow_args.assert_called_once_with('TimelineFlow')
@@ -587,6 +655,8 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
           name='TimelineFlow', args=mock_create_flow_args.return_value)
       mock_create_flow.return_value.WaitUntilDone.assert_called_once()
       mock_create_flow.return_value.GetCollectedTimelineBody.assert_called_once()
+      self.assertDictEqual(self.client._pathspec_mapper._path_ps_map,
+                           {'/': jobs_pb2.PathSpec.OS})
 
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
@@ -1046,28 +1116,34 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       self.client._flow_monitor.StartMonitor()
       result = self.client.ListAllFlows(10)
 
+      expected = """\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID 1970-01-01T00:00:09Z ArtifactCollectorFlow AllOS_File TERMINATED
+\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID 1970-01-01T00:00:08Z ArtifactCollectorFlow AllOS_File RUNNING
+\tGETFILERUNNINGFLOWID 1970-01-01T00:00:07Z GetFile C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier RUNNING
+\tCLIENTFILEFINDERTERMINATEDFLOWID 1970-01-01T00:00:06Z ClientFileFinder DOWNLOAD /remote/path TERMINATED
+\tCLIENTFILEFINDERRUNNINGFLOWID 1970-01-01T00:00:05Z ClientFileFinder DOWNLOAD /remote/path RUNNING
+\tINTERROGATEFLOWID 1970-01-01T00:00:04Z Interrogate  RUNNING
+\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow root: / RUNNING"""
+
+      self.assertEqual(result, expected)
+
+  def test_ListAllFlowsUncached(self):
+    """Tests the ListAllFlows method when the flows are not yet cached."""
+    with (mock.patch.object(self.client._grr_client, 'ListFlows'
+                            ) as mock_listflows,
+          mock.patch.object(self.client._flow_monitor, 'IsFlowCached'
+                            ) as mock_isflowcached,
+          mock.patch.object(self.client._flow_monitor._grr_client, 'Flow'
+                            ) as mock_monitor_flow):
+      mock_listflows.return_value = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING]
+      mock_monitor_flow.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING]
+      mock_isflowcached.return_value = False
+
+      self.client._flow_monitor.StartMonitor()
+      result = self.client.ListAllFlows(10)
+
       self.assertIn(
           '\tCLIENTFILEFINDERRUNNINGFLOWID 1970-01-01T00:00:05Z '
-          'ClientFileFinder DOWNLOAD /remote/path RUNNING', result)
-      self.assertIn(
-          '\tCLIENTFILEFINDERTERMINATEDFLOWID 1970-01-01T00:00:06Z '
-          'ClientFileFinder DOWNLOAD /remote/path TERMINATED', result)
-      self.assertIn(
-          '\tARTIFACTCOLLECTORFLOWRUNNINGFLOWID 1970-01-01T00:00:08Z '
-          'ArtifactCollectorFlow AllOS_File RUNNING', result)
-      self.assertIn(
-          '\tARTIFACTCOLLECTORFLOWTERMINATEDFLOWID 1970-01-01T00:00:09Z '
-          'ArtifactCollectorFlow AllOS_File TERMINATED', result)
-      self.assertIn(
-          '\tGETFILERUNNINGFLOWID 1970-01-01T00:00:07Z GetFile '
-          'C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier '
-          'RUNNING', result)
-      self.assertIn(
-          '\tINTERROGATEFLOWID 1970-01-01T00:00:04Z Interrogate  RUNNING',
-          result)
-      self.assertIn(
-          '\tTIMELINEFLOWID 1970-01-01T00:00:03Z TimelineFlow root: / RUNNING',
-          result)
+          'ClientFileFinder <UNCACHED FLOW ARGS> RUNNING', result)
 
   @parameterized.named_parameters(
       ('cff_success', _MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED,
@@ -1124,6 +1200,22 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     """Tests the GetOS method."""
     self.assertEqual(self.client.GetOS(), 'Windows')
 
+  @mock.patch('datetime.datetime', wraps=datetime.datetime)
+  def test_GetLastTimelineWindowsRoot(self, mock_dt):
+    """Tests the GetLastTimeline method when there is a Windows root."""
+    with (mock.patch.object(self.client._grr_client,
+                            'ListFlows',
+                            return_value=_MOCK_APIFLOW_LISTFLOWS),
+          mock.patch.object(flow.Flow, 'Get', new=_MockGetFromFlowList)):
+      # "Now" is half of the staleness threshold past the epoch. All the flows
+      # returned are at 1 second past the epoch, so they are not stale.
+      mock_dt.now.return_value = datetime.datetime.fromtimestamp(
+          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          tz=datetime.timezone.utc)
+
+      result = self.client.GetLastTimeline()
+      self.assertEqual(result, 'CORRECT_WIN')
+
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
   @mock.patch.object(_MOCK_APIFLOW_GETFILE_RUNNING, 'WaitUntilDone')
@@ -1160,16 +1252,83 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           mock.call(
               name='ClientFileFinder', args=mock_create_flow_args.return_value),
           mock.call(
-              name='GetFile',
-              args=flows_pb2.GetFileArgs(
-                  pathspec=jobs_pb2.PathSpec(
+              name='MultiGetFile',
+              args=flows_pb2.MultiGetFileArgs(
+                  pathspecs=[jobs_pb2.PathSpec(
                       path='C:/Users/username/Downloads/Firefox Installer.exe',
                       pathtype=jobs_pb2.PathSpec.NTFS,
-                      stream_name='Zone.Identifier')))])
+                      stream_name='Zone.Identifier')]))])
       mock_ff_wait_until_done.assert_called_once()
       mock_gf_wait_until_done.assert_called_once()
 
       self.assertEqual(result, _EXPECTED_HASH_WINDOWS_RESULT)
+
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
+  def test_FileInfo_D_Drive(self,
+                            mock_ff_list_results,
+                            mock_ff_wait_until_done):
+    """Tests CFF for a file on a Windows non-root drive uses OS PathSpec."""
+    mock_ff_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
+
+    with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs',
+                            ) as mock_create_flow_args,
+          mock.patch.object(self.client._grr_client, 'CreateFlow',
+                            ) as mock_create_flow):
+      mock_create_flow.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING]
+
+      self.client.FileInfo('/D:/foo')
+
+      mock_create_flow_args.assert_called_once_with('ClientFileFinder')
+      mock_create_flow_args.return_value.paths.append.assert_called_once_with(
+          'D:/foo')
+      self.assertEqual(mock_create_flow_args.return_value.action.action_type,
+                       flows_pb2.FileFinderAction.HASH)
+      self.assertEqual(mock_create_flow_args.return_value.pathtype,
+                       jobs_pb2.PathSpec.OS)
+      mock_create_flow.assert_called_with(
+          name='ClientFileFinder', args=mock_create_flow_args.return_value)
+      mock_ff_wait_until_done.assert_called_once()
+
+  @mock.patch.object(flow.Flow, 'Get')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
+  @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'GetFilesArchive')
+  def test_CollectFiles_D_Drive(self,
+                                mock_get_files_archive,
+                                mock_list_results,
+                                mock_wait_until_done,
+                                mock_get):
+    """Tests the CollectFile method for windows, non-NTFS volume, with a non-ascii directory name."""
+    mock_get.side_effect = [_MOCK_APIFLOW_CFF_DOWNLOAD_TERMINATED]
+    mock_list_results.return_value = [_MOCK_HASH_WINDOWS_ENTRY]
+    mock_get_files_archive.return_value = [
+        _MOCK_ZIP_WINDOWS_CLIENTFILEFINDER_FAT32_DATA]
+
+    with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs'
+                            ) as mock_create_flow_args,
+          mock.patch.object(self.client._grr_client, 'CreateFlow'
+                            ) as mock_create_flow):
+      mock_create_flow.return_value = _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING
+      self.client._pathspec_mapper['D:/'] = jobs_pb2.PathSpec.OS
+
+      local_path = os.path.join(self.create_tempdir(), 'local_path')
+      self.client.CollectFiles('/D:/\xa0/bar', local_path)
+
+      mock_create_flow_args.assert_called_once_with('ClientFileFinder')
+      self.assertEqual(mock_create_flow_args.return_value.pathtype,
+                       jobs_pb2.PathSpec.OS)
+      self.assertTrue(
+          mock_create_flow_args.return_value.use_raw_filesystem_access)
+
+      mock_create_flow_args.return_value.paths.append.assert_called_once_with(
+          'D:/\xa0/bar')
+      mock_create_flow.assert_called_once_with(
+          name='ClientFileFinder', args=mock_create_flow_args.return_value)
+      mock_wait_until_done.assert_called_once()
+
+      self.assertTrue(os.path.exists(
+          os.path.join(local_path, 'D_', '\xa0', 'bar')))
 
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'WaitUntilDone')
   @mock.patch.object(_MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING, 'ListResults')
@@ -1239,12 +1398,12 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           mock.call(
               name='ClientFileFinder', args=mock_create_flow_args.return_value),
           mock.call(
-              name='GetFile',
-              args=flows_pb2.GetFileArgs(
-                  pathspec=jobs_pb2.PathSpec(
+              name='MultiGetFile',
+              args=flows_pb2.MultiGetFileArgs(
+                  pathspecs=[jobs_pb2.PathSpec(
                       path='C:/Users/username/Downloads/Firefox Installer.exe',
                       pathtype=jobs_pb2.PathSpec.NTFS,
-                      stream_name='Zone.Identifier')))])
+                      stream_name='Zone.Identifier')]))])
       mock_ff_wait_until_done.assert_called_once()
       mock_gf_wait_until_done.assert_called_once()
       mock_gf_get_files_archive.assert_called_once()
@@ -1291,12 +1450,12 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           mock.call(
               name='ClientFileFinder', args=mock_create_flow_args.return_value),
           mock.call(
-              name='GetFile',
-              args=flows_pb2.GetFileArgs(
-                  pathspec=jobs_pb2.PathSpec(
+              name='MultiGetFile',
+              args=flows_pb2.MultiGetFileArgs(
+                  pathspecs=[jobs_pb2.PathSpec(
                       path='C:/Users/username/Downloads/Firefox Installer.exe',
                       pathtype=jobs_pb2.PathSpec.NTFS,
-                      stream_name='Zone.Identifier')))])
+                      stream_name='Zone.Identifier')]))])
       mock_ff_wait_until_done.assert_called_once()
       mock_gf_wait_until_done.assert_called_once()
       mock_gf_get_files_archive.assert_called_once()
@@ -1378,6 +1537,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           mock.patch.object(self.client._grr_client, 'CreateFlow'
                             ) as mock_create_flow):
       mock_create_flow.return_value = _MOCK_APIFLOW_CFF_DOWNLOAD_RUNNING
+      self.client._pathspec_mapper['C:/'] = jobs_pb2.PathSpec.NTFS
 
       local_path = os.path.join(self.create_tempdir(), 'local_path')
       self.client.CollectFiles(
@@ -1808,8 +1968,15 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
     with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs',
                             return_value=mock.Mock()) as mock_create_flow_args,
           mock.patch.object(self.client._grr_client, 'CreateFlow',
-                            return_value=mock.Mock()) as mock_create_flow):
-      mock_create_flow.return_value.ListResults.return_value = []
+                            return_value=mock.Mock()) as mock_create_flow,
+          mock.patch('io.BytesIO') as mock_bytesio):
+      mock_result = mock.Mock()
+      mock_result.payload.filesystem_type = 'NTFS'
+      mock_create_flow.return_value.ListResults.return_value = [mock_result]
+      mock_create_flow.return_value.args.root = in_path.encode('utf-8')
+      mock_bytesio.return_value.getvalue.return_value = open(
+          _SAMPLE_TIMELINE_WINDOWS, 'rb').read()
+
       self.client.CollectTimeline(path=in_path)
 
       mock_create_flow_args.assert_called_once_with('TimelineFlow')
@@ -1819,6 +1986,8 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
           name='TimelineFlow', args=mock_create_flow_args.return_value)
       mock_create_flow.return_value.WaitUntilDone.assert_called_once()
       mock_create_flow.return_value.GetCollectedTimelineBody.assert_called_once()
+      self.assertDictEqual({'C:/': jobs_pb2.PathSpec.NTFS},
+                           self.client._pathspec_mapper._path_ps_map)
 
   def test_DetermineSourceForArtefact(self):
     """Tests determining the source type for a mixed type Artefact."""
@@ -1826,6 +1995,30 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
 
     self.assertEqual(
         result, artifact_pb2.ArtifactSource.SourceType.REGISTRY_VALUE)
+
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING, 'WaitUntilDone')
+  @mock.patch.object(
+      _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING, 'ListResults')
+  def test_DescribeVolumes(self,
+                           mock_list_results,
+                           mock_wait_until_done):
+    """Tests the DescribeVolumes method."""
+    with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs'
+                            ) as mock_create_flow_args,
+          mock.patch.object(self.client._grr_client, 'CreateFlow'
+                            ) as mock_create_flow):
+      mock_create_flow.return_value = (
+          _MOCK_APIFLOW_ARTEFACTCOLLECTOR_WMILOGICALDISKS_RUNNING)
+      mock_list_results.return_value = [
+          _MOCK_WINDOWS_ARTEFACT_VOLUME_C,
+          _MOCK_WINDOWS_ARTEFACT_VOLUME_D]
+
+      result = self.client.DescribeVolumes()
+
+      mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
+      mock_wait_until_done.assert_called_once()
+      self.assertEqual(result, _EXPECTED_WINDOWS_VOLUMES_RESULT)
 
 
 class GrrShellClientDarwinTest(parameterized.TestCase):
@@ -1850,6 +2043,7 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
 
     self.client = grr_shell_client.GRRShellClient(
         _TEST_GRR_URL, _TEST_GRR_USER, _TEST_GRR_PASS, _TEST_CLIENT_FQDN, _MAX_FILE_SIZE_1GB)
+    self.client._pathspec_mapper['/'] = jobs_pb2.PathSpec.OS
 
   def test_GetOS(self):
     """Tests the GetOS method."""
@@ -1950,6 +2144,55 @@ class GrrShellClientDarwinTest(parameterized.TestCase):
 
     self.assertEqual(
         result, artifact_pb2.ArtifactSource.SourceType.FILE)
+
+
+class PathSpecMapperTest(parameterized.TestCase):
+  """Tests the _PathSpecMapper class."""
+
+  pathspecmapper_win = grr_shell_client._PathSpecMapper()
+  pathspecmapper_lin = grr_shell_client._PathSpecMapper()
+
+  def setUp(self):  # pylint: disable=arguments-differ
+    """Set up tests."""
+    super().setUp()
+    self.pathspecmapper_win['C:/'] = jobs_pb2.PathSpec.NTFS
+    self.pathspecmapper_win['D:/'] = jobs_pb2.PathSpec.OS
+
+    self.pathspecmapper_lin['/'] = jobs_pb2.PathSpec.OS
+    self.pathspecmapper_lin['/mnt/external'] = jobs_pb2.PathSpec.OS
+    self.pathspecmapper_lin['/mnt/external_ntfs'] = jobs_pb2.PathSpec.NTFS
+
+  def test_PathSpecMapper_SetItem(self):
+    """Tests adding mappings to _PathSpecMapper.
+
+    Mappings are added in setup(), this just tests they are as expected.
+    """
+    self.assertDictEqual(self.pathspecmapper_win._path_ps_map,
+                         {'C:/': jobs_pb2.PathSpec.NTFS,
+                          'D:/': jobs_pb2.PathSpec.OS})
+
+    self.assertDictEqual(self.pathspecmapper_lin._path_ps_map,
+                         {'/': jobs_pb2.PathSpec.OS,
+                          '/mnt/external': jobs_pb2.PathSpec.OS,
+                          '/mnt/external_ntfs': jobs_pb2.PathSpec.NTFS})
+
+  @parameterized.named_parameters(
+      ('c_drive', 'C:/file', jobs_pb2.PathSpec.NTFS),
+      ('d_drive', 'D:/file', jobs_pb2.PathSpec.OS),
+      ('e_drive', 'E:/file', jobs_pb2.PathSpec.OS),
+  )
+  def test_PathSpecmapper_win_GetItem(self, path, expected_value):
+    """Tests getting a mapping from _PathSpecMapper - windows edition."""
+    self.assertEqual(self.pathspecmapper_win[path], expected_value)
+
+  @parameterized.named_parameters(
+      ('root', '/home/file', jobs_pb2.PathSpec.OS),
+      ('mapped_ext', '/mnt/external/file', jobs_pb2.PathSpec.OS),
+      ('mapped_ntfs', '/mnt/external_ntfs/file', jobs_pb2.PathSpec.NTFS),
+  )
+  def test_PathSpecmapper_lin_GetItem(self, path, expected_value):
+    """Tests getting a mapping from _PathSpecMapper - linux edition."""
+    self.assertEqual(self.pathspecmapper_lin[path], expected_value)
 
 
 if __name__ == '__main__':

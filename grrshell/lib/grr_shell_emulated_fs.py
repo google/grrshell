@@ -28,7 +28,7 @@ from grrshell.lib import utils
 
 logger = logging.logging.getLogger('grrshell')
 
-_ENCODINGS = frozenset(('utf-8', 'cp1251'))
+_ENCODINGS = ['utf-8', 'cp1251']  # Order is important, so can't use a frozenset
 
 
 # GRR timelines use the Sleuthkit format
@@ -362,7 +362,7 @@ class GrrShellEmulatedFS:
       raise errors.IsAFileError(
           f'Starting directory is actually a file: {basedir}')
 
-    matcher = re.compile(needle)
+    matcher = re.compile(needle, flags=re.IGNORECASE)
     results = self._GetFSTreeFromPath(directory)
     results = [r.stats.name for r in results if matcher.search(r.stats.name)]
 

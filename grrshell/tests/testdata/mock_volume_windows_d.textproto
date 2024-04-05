@@ -1,0 +1,78 @@
+# proto-file: grr_response_proto/api/flow.proto
+# proto-message: ApiFlowResult
+payload: {
+  [type.googleapis.com/grr.Dict] {
+    dat {
+      k {
+        string: "Description"
+      }
+      v {
+        string: "Removable Disk"
+      }
+    }
+    dat {
+      k {
+        string: "DeviceID"
+      }
+      v {
+        string: "D:"
+      }
+    }
+    dat {
+      k {
+        string: "DriveType"
+      }
+      v {
+        integer: 2
+      }
+    }
+    dat {
+      k {
+        string: "FileSystem"
+      }
+      v {
+        string: "FAT32"
+      }
+    }
+    dat {
+      k {
+        string: "FreeSpace"
+      }
+      v {
+        string: "8002740224"
+      }
+    }
+    dat {
+      k {
+        string: "Name"
+      }
+      v {
+        string: "D:"
+      }
+    }
+    dat {
+      k {
+        string: "Size"
+      }
+      v {
+        string: "8002781184"
+      }
+    }
+    dat {
+      k {
+        string: "VolumeName"
+      }
+      v {
+        string: "THUMBDRIVE"
+      }
+    }
+    dat {
+      k {
+        string: "VolumeSerialNumber"
+      }
+      v {
+        string: "98765432"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# proto-file: grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/MULTIGETFILERUNNINGMULTIPLEFLOWID"
+name: "MultiGetFile"
+args {
+  [type.googleapis.com/grr.MultiGetFileArgs] {
+    pathspecs: [
+      {
+        stream_name: "Zone.Identifier"
+        path: "C:/Users/username/Downloads/Firefox Installer.exe"
+        pathtype: NTFS
+      },
+      {
+        path: "C:/Users/username/Downloads/Safari Installer.exe"
+        pathtype: NTFS
+      }
+    ]
+  }
+}
+state: RUNNING
+flow_id: "MULTIGETFILERUNNINGMULTIPLEFLOWID"
+client_id: "C.0000000000000001"
+started_at: 7000000  # 7 seconds past epoch
+

@@ -4,7 +4,7 @@ items: [
   {
     urn: "aff4:/C.0000000000000001/A1B2C3D4E5F6A1B2"
     name: "ClientFileFinder"
-    state: 0
+    state: RUNNING
     args {
       [type.googleapis.com/grr.FileFinderArgs] {
         action: {
@@ -17,60 +17,78 @@ items: [
     }
     flow_id: "A1B2C3D4E5F6A1B2"
     client_id: "C.0000000000000001"
+    last_active_at: 1000000  # 1 second past epoch in microseconds
   },
   {
     urn: "aff4:/C.0000000000000001"
     flow_id: "ERRORED_BUT_CORRECT",
     name: "TimelineFlow",
-    state: 3,
+    state: ERROR,
     args: {
       [type.googleapis.com/grr.TimelineArgs] {
         root: "/"
       }
     }
+    last_active_at: 1000000  # 1 second past epoch in microseconds
   },
   {
     urn: "aff4:/C.0000000000000001"
     flow_id: "INCORRECT"
     name: "TimelineFlow"
-    state: 1
+    state: TERMINATED
     args: {
       [type.googleapis.com/grr.TimelineArgs] {
         root: "/root"
       }
     }
+    last_active_at: 1000000  # 1 second past epoch in microseconds
   },
   {
     urn: "aff4:/C.0000000000000001"
-    flow_id: "CORRECT_LIN",
+    flow_id: "CORRECT_LIN_1_SECOND",
     name: "TimelineFlow",
-    state: 1
+    state: TERMINATED
     args: {
       [type.googleapis.com/grr.TimelineArgs] {
         root: "/"
       }
     }
+    last_active_at: 1000000  # 1 second past epoch in microseconds
+  },
+  {
+    urn: "aff4:/C.0000000000000001"
+    flow_id: "CORRECT_LIN_2_SECOND",
+    name: "TimelineFlow",
+    state: TERMINATED
+    args: {
+      [type.googleapis.com/grr.TimelineArgs] {
+        root: "/"
+      }
+    }
+    last_active_at: 2000000  # 1 second past epoch in microseconds
   },
   {
     urn: "aff4:/C.0000000000000001"
     flow_id: "INCORRECT_WIN",
     name: "TimelineFlow",
-    state: 1
+    state: TERMINATED
     args: {
       [type.googleapis.com/grr.TimelineArgs] {
         root: "C:/Users/test"
       }
     }
+    last_active_at: 1000000  # 1 second past epoch in microseconds
   },
   {
     urn: "aff4:/C.0000000000000001"
     flow_id: "CORRECT_WIN",
     name: "TimelineFlow",
-    state: 1
+    state: TERMINATED
     args: {
       [type.googleapis.com/grr.TimelineArgs] {
         root: "C:/"
       }
     }
+    last_active_at: 1000000  # 1 second past epoch in microseconds
   }
 ]

@@ -1,0 +1,78 @@
+# proto-file: grr_response_proto/api/flow.proto
+# proto-message: ApiFlowResult
+payload: {
+  [type.googleapis.com/grr.Dict] {
+    dat {
+      k {
+        string: "Description"
+      }
+      v {
+        string: "Local Fixed Disk"
+      }
+    }
+    dat {
+      k {
+        string: "DeviceID"
+      }
+      v {
+        string: "C:"
+      }
+    }
+    dat {
+      k {
+        string: "DriveType"
+      }
+      v {
+        integer: 3
+      }
+    }
+    dat {
+      k {
+        string: "FileSystem"
+      }
+      v {
+        string: "NTFS"
+      }
+    }
+    dat {
+      k {
+        string: "FreeSpace"
+      }
+      v {
+        string: "1654566748160"
+      }
+    }
+    dat {
+      k {
+        string: "Name"
+      }
+      v {
+        string: "C:"
+      }
+    }
+    dat {
+      k {
+        string: "Size"
+      }
+      v {
+        string: "2047370850304"
+      }
+    }
+    dat {
+      k {
+        string: "VolumeName"
+      }
+      v {
+        string: "c_drive"
+      }
+    }
+    dat {
+      k {
+        string: "VolumeSerialNumber"
+      }
+      v {
+        string: "01234567"
+      }
+    }
+  }
+}

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unit tests for the Grr Shell Emulated FS class."""
 
-# pylint: disable=wrong-import-order
+# pylint: disable=wrong-import-order,ungrouped-imports
 # pylint: disable=protected-access
 # pytype: disable=attribute-error
 
@@ -193,6 +193,7 @@ class GrrShellEmulatedFSLinuxTest(parameterized.TestCase):
       ('slash_none_bash', '/', '', 'bash', ['/root/.bashrc']),
       ('root_none_bash', '/root', '', 'bash', ['/root/.bashrc']),
       ('slash_root_bash', '/', 'root', 'bash', ['/root/.bashrc']),
+      ('slash_root_bash_uppercase', '/', 'root', 'BASH', ['/root/.bashrc']),
       ('slash_none_regex', '/', '', '.*ca[cd].*', ['/root/.cache',
                                                    '/root/.cache/dconf',
                                                    '/root/.cache/dconf/user']),
@@ -319,7 +320,7 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
       ('c_drive', '/C:', ['.', '$Recycle.Bin', '$WinREAgent', 'Config.Msi',
                           'Documents and Settings', 'DumpStack.log.tmp',
                           'PerfLogs', 'Program Files', 'hiberfil.sys',
-                          'pagefile.sys']),
+                          'pagefile.sys', '\xa0']),
       ('file', '/C:/pagefile.sys', ['pagefile.sys']),
       ('glob_raw', '*', ['.', 'C:']),
       ('glob_c_star', 'C*', ['C:']),
@@ -338,11 +339,11 @@ class GrrShellEmulatedFSWindowsTest(parameterized.TestCase):
       ('c_drive', '/C:', False, ['$Recycle.Bin/', '$WinREAgent/', 'Config.Msi/',
                                  'Documents and Settings/', 'DumpStack.log.tmp',
                                  'PerfLogs/', 'Program Files/', 'hiberfil.sys',
-                                 'pagefile.sys']),
+                                 'pagefile.sys', '\xa0/']),
       ('c_drive_dirs_only', '/C:', True, ['Config.Msi/', '$Recycle.Bin/',
                                           'Program Files/', '$WinREAgent/',
                                           'Documents and Settings/',
-                                          'PerfLogs/'])
+                                          'PerfLogs/', '\xa0/'])
   )
   def test_GetChildrenOfPath(self,
                              remote_path: str,

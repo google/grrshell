@@ -1,0 +1,15 @@
+# proto-file: grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/ARTIFACTCOLLECTORFLOWRUNNINGFLOWID"
+name: "ArtifactCollectorFlow"
+args {
+  [type.googleapis.com/grr.ArtifactCollectorFlowArgs] {
+    artifact_list: [
+      "WMILogicalDisks"
+    ]
+  }
+}
+state: RUNNING
+flow_id: "ARTIFACTCOLLECTORFLOWRUNNINGFLOWID"
+client_id: "C.0000000000000001"
+started_at: 31000000  # 31 seconds past epoch

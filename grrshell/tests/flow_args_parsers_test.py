@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unit tests for GRR Flow Args parsing functions."""
 
-# pylint: disable=wrong-import-order
+# pylint: disable=wrong-import-order,ungrouped-imports
 from unittest import mock
 
 from google.protobuf import text_format
@@ -119,6 +119,27 @@ _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_SINGLE = [
 _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_MULTI = [
     'Browser: FIREFOX', 'Browser: CHROME', 'Browser: INTERNET_EXPLORER']
 
+_MOCK_APIFLOW_MULTIGETFILE_SINGLE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_multigetfile_running_single.textproto'
+_MOCK_APIFLOW_MULTIGETFILE_SINGLE = flow.Flow(
+    data=text_format.Parse(open(
+        _MOCK_APIFLOW_MULTIGETFILE_SINGLE_PROTO_FILE, 'rb').read(),
+                           flow_pb2.ApiFlow()), context=mock.MagicMock())
+_MOCK_APIFLOW_MULTIGETFILE_SINGLE_EXPECTED_SINGLE = [
+    'C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier']
+_MOCK_APIFLOW_MULTIGETFILE_SINGLE_EXPECTED_MULTIPLE = [
+    'C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier']
+
+_MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_multigetfile_running_multiple.textproto'
+_MOCK_APIFLOW_MULTIGETFILE_MULTIPLE = flow.Flow(
+    data=text_format.Parse(open(
+        _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_PROTO_FILE, 'rb').read(),
+                           flow_pb2.ApiFlow()), context=mock.MagicMock())
+_MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_SINGLE = [
+    '<MULTIPLE PATHS>']
+_MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_MULTIPLE = [
+    'C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier',
+    'C:/Users/username/Downloads/Safari Installer.exe']
+
 
 class FlowArgsParsersTest(parameterized.TestCase):
   """Unit tests for GRR Flow Args parsing functions."""
@@ -164,6 +185,14 @@ class FlowArgsParsersTest(parameterized.TestCase):
        False, _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_SINGLE),
       ('collectbrowserhistory_multiline', _MOCK_APIFLOW_COLLECTBROWSERHIST,
        True, _MOCK_APIFLOW_COLLECTBROWSERHIST_EXPECTED_MULTI),
+      ('multigetfiles_single_singleline', _MOCK_APIFLOW_MULTIGETFILE_SINGLE,
+       False, _MOCK_APIFLOW_MULTIGETFILE_SINGLE_EXPECTED_SINGLE),
+      ('multigetfiles_single_multiline', _MOCK_APIFLOW_MULTIGETFILE_SINGLE,
+       True, _MOCK_APIFLOW_MULTIGETFILE_SINGLE_EXPECTED_MULTIPLE),
+      ('multigetfiles_multiple_singleline', _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE,
+       False, _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_SINGLE),
+      ('multigetfiles_multiple_multiline', _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE,
+       True, _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_MULTIPLE),
   )
   def test_Parse(self,
                  flow_handle: flow.Flow,

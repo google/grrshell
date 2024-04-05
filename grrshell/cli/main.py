@@ -54,192 +54,264 @@ _NO_INITIAL_TIMELINE_HELP = (
 _REMOTE_PATH_HELP = 'ClientFileFinder expression for remote files'
 # go/keep-sorted end
 
-# go/keep-sorted start
-_ARTEFACT = flags.DEFINE_string(
-    name='artefact', default='', required=False, help=_ARTIFACT_HELP)
-_CLIENT = flags.DEFINE_string(
-    name='client', default='', required=False, help=_CLIENT_HELP)
-_DEBUG = flags.DEFINE_bool(name='debug', default=False, help=_DEBUG_HELP)
-_FLOW = flags.DEFINE_string(
-    name='flow', default='', required=False, help=_FLOW_HELP)
-_INITIAL_TIMELINE = flags.DEFINE_string(
-    name='initial-timeline', default='', required=False,
-    help=_INITIAL_TIMELINE_HELP)
-_LOCAL_PATH = flags.DEFINE_string(
-    name='local-path', default='./', required=False, help=_LOCAL_PATH_HELP)
-_MAX_FILE_SIZE = flags.DEFINE_string(
-    name='max-file-size', default='0', required=False, help=_MAX_FILE_SIZE_HELP)
-_NO_INITIAL_TIMELINE = flags.DEFINE_bool(
-    name='no-initial-timeline', default=False, required=False,
-    help=_NO_INITIAL_TIMELINE_HELP)
-_REMOTE_PATH = flags.DEFINE_string(
-    name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
-# go/keep-sorted end
-_GRR_USERNAME = flags.DEFINE_string(name='username', default='', required=False, help=_GRR_USERNAME_HELP)
-_GRR_PASSWORD = flags.DEFINE_string(name='password', default='', required=False, help=_GRR_PASSWORD_HELP)
-_GRR_SERVER = flags.DEFINE_string(name='grr-server', default='', required=False, help=_GRR_SERVER_HELP)
 
-flags.DEFINE_alias('artifact', 'artefact')
-flags.DEFINE_alias('user', 'username')
-flags.DEFINE_alias('pass', 'password')
+_COMMANDS = frozenset(
+    ('shell', 'collect', 'artefact', 'artifact', 'complete', 'help'))
 
 
-_USAGE = f"""grr_shell {{shell,collect,artefact,complete,help}}
+def _USAGE():
+  return f"""grr_shell {{shell,collect,artefact,complete,help}}
 
 shell - Start an (emulated) interactive shell with CLIENT_ID (default if no command specified)
-  --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
-  --{_GRR_PASSWORD.name} {_GRR_PASSWORD_HELP}
-  --{_GRR_SERVER.name} {_GRR_SERVER_HELP}
-  --{_CLIENT.name} {_CLIENT_HELP}
-  --{_INITIAL_TIMELINE.name} {_INITIAL_TIMELINE_HELP}
-  --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
-  --{_NO_INITIAL_TIMELINE.name} {_NO_INITIAL_TIMELINE_HELP}
+  --{flags.FLAGS['username'].name} {_GRR_USERNAME_HELP}
+  --{flags.FLAGS['password'].name} {_GRR_PASSWORD_HELP}
+  --{flags.FLAGS['grr-server'].name} {_GRR_SERVER_HELP}
+  --{flags.FLAGS['client'].name} {_CLIENT_HELP}
+  --{flags.FLAGS['initial-timeline'].name} {_INITIAL_TIMELINE_HELP}
+  --{flags.FLAGS['max-file-size'].name} {_MAX_FILE_SIZE_HELP}
+  --{flags.FLAGS['no-initial-timeline'].name} {_NO_INITIAL_TIMELINE_HELP}
 
 collect - Collect files from the client (ClientFileFinder flow)
-  --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
-  --{_GRR_PASSWORD.name} {_GRR_PASSWORD_HELP}
-  --{_GRR_SERVER.name} {_GRR_SERVER_HELP}
-  --{_CLIENT.name} {_CLIENT_HELP}
-  --{_REMOTE_PATH.name} {_REMOTE_PATH_HELP}
-  --{_LOCAL_PATH.name} {_LOCAL_PATH_HELP}
-  --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
+  --{flags.FLAGS['username'].name} {_GRR_USERNAME_HELP}
+  --{flags.FLAGS['password'].name} {_GRR_PASSWORD_HELP}
+  --{flags.FLAGS['grr-server'].name} {_GRR_SERVER_HELP}
+  --{flags.FLAGS['client'].name} {_CLIENT_HELP}
+  --{flags.FLAGS['remote-path'].name} {_REMOTE_PATH_HELP}
+  --{flags.FLAGS['local-path'].name} {_LOCAL_PATH_HELP}
+  --{flags.FLAGS['max-file-size'].name} {_MAX_FILE_SIZE_HELP}
 
 artefact - Schedule and collect an ArtifactCollector flow
-  --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
-  --{_GRR_PASSWORD.name} {_GRR_PASSWORD_HELP}
-  --{_GRR_SERVER.name} {_GRR_SERVER_HELP}
-  --{_CLIENT.name} {_CLIENT_HELP}
-  --{_ARTEFACT.name} {_ARTIFACT_HELP}
-  --{_LOCAL_PATH.name} {_LOCAL_PATH_HELP}
-  --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
+  --{flags.FLAGS['username'].name} {_GRR_USERNAME_HELP}
+  --{flags.FLAGS['password'].name} {_GRR_PASSWORD_HELP}
+  --{flags.FLAGS['grr-server'].name} {_GRR_SERVER_HELP}
+  --{flags.FLAGS['client'].name} {_CLIENT_HELP}
+  --{flags.FLAGS['artefact'].name} {_ARTIFACT_HELP}
+  --{flags.FLAGS['local-path'].name} {_LOCAL_PATH_HELP}
+  --{flags.FLAGS['max-file-size'].name} {_MAX_FILE_SIZE_HELP}
 
 complete - Complete an existing flow, downloading the results
-  --{_GRR_USERNAME.name} {_GRR_USERNAME_HELP}
-  --{_GRR_PASSWORD.name} {_GRR_PASSWORD_HELP}
-  --{_GRR_SERVER.name} {_GRR_SERVER_HELP}
-  --{_CLIENT.name} {_CLIENT_HELP}
-  --{_FLOW.name} {_FLOW_HELP}
-  --{_LOCAL_PATH.name} {_LOCAL_PATH_HELP}
-  --{_MAX_FILE_SIZE.name} {_MAX_FILE_SIZE_HELP}
+  --{flags.FLAGS['username'].name} {_GRR_USERNAME_HELP}
+  --{flags.FLAGS['password'].name} {_GRR_PASSWORD_HELP}
+  --{flags.FLAGS['grr-server'].name} {_GRR_SERVER_HELP}
+  --{flags.FLAGS['client'].name} {_CLIENT_HELP}
+  --{flags.FLAGS['flow'].name} {_FLOW_HELP}
+  --{flags.FLAGS['local-path'].name} {_LOCAL_PATH_HELP}
+  --{flags.FLAGS['max-file-size'].name} {_MAX_FILE_SIZE_HELP}
 
 help - Display this text and exit
 
-Enable debug logging with --{_DEBUG.name}
+Enable debug logging with --{flags.FLAGS['debug'].name}
 
 Raise bugs here: https://github.com/google/grrshell/issues/new
 """
 
 
-def main(argv: Sequence[str]) -> None:  # pylint: disable=invalid-name,too-many-branches,too-many-return-statements
-  """Main driver.
+class Main:
+  """Main driver class."""
 
-  Args:
-    argv: Command line args.
-  """
-  argv = argv[1:]  # Remove the binary path from argv, we don't need it
+  def __init__(self):
+    """Initializes the main driver."""
+    self._max_size = 0
+    self._client: grr_shell_client.GRRShellClient = None
+    self._shell: grr_shell_repl.GRRShellREPL = None
 
-  if _DEBUG.value:
-    _SetUpLogging()
+  @classmethod
+  def DefineFlags(cls):
+    """Define absl flags for the application."""
+    # go/keep-sorted start
+    flags.DEFINE_bool(name='debug', default=False, help=_DEBUG_HELP)
+    flags.DEFINE_bool(
+        name='no-initial-timeline', default=False, required=False,
+        help=_NO_INITIAL_TIMELINE_HELP)
+    flags.DEFINE_string(
+        name='artefact', default='', required=False, help=_ARTIFACT_HELP)
+    flags.DEFINE_string(
+        name='client', default='', required=False, help=_CLIENT_HELP)
+    flags.DEFINE_string(
+        name='flow', default='', required=False, help=_FLOW_HELP)
+    flags.DEFINE_string(
+        name='initial-timeline', default='', required=False,
+        help=_INITIAL_TIMELINE_HELP)
+    flags.DEFINE_string(
+        name='local-path', default='./', required=False, help=_LOCAL_PATH_HELP)
+    flags.DEFINE_string(
+        name='max-file-size', default='0', required=False,
+        help=_MAX_FILE_SIZE_HELP)
+    flags.DEFINE_string(
+        name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
+    # go/keep-sorted end
+    flags.DEFINE_string(name='username', default='', required=False, help=_GRR_USERNAME_HELP)
+    flags.DEFINE_string(name='password', default='', required=False, help=_GRR_PASSWORD_HELP)
+    flags.DEFINE_string(name='grr-server', default='', required=False, help=_GRR_SERVER_HELP)
 
-  if not argv:
-    argv = ('shell',)
+    flags.DEFINE_alias('artifact', 'artefact')
+    flags.DEFINE_alias('user', 'username')
+    flags.DEFINE_alias('pass', 'password')
 
-  try:
-    max_size = int(_MAX_FILE_SIZE.value)
-  except ValueError as error:
-    print(f'Could not set max-file-size to {_MAX_FILE_SIZE.value}: {str(error)}\nContinuing with default value.')
-    max_size = 0
+  def main(self, argv: Sequence[str]) -> None:
+    """Main driver.
 
-  if argv[0] == 'help':
-    print(_USAGE)
-    return
-
-  for flag in (_GRR_SERVER, _GRR_USERNAME, _GRR_PASSWORD, _CLIENT):
-    if not flag.value:
-      print(f'--{flag.name} is required.')
+    Args:
+      argv: Command line args.
+    """
+    command = self._ParseArgs(argv)
+    if not command:
       return
 
-  if _NO_INITIAL_TIMELINE.value and _INITIAL_TIMELINE.value:
-    print(f'--{_NO_INITIAL_TIMELINE.name} and --{_INITIAL_TIMELINE.name} are '
-          'mutually exclusive.')
-    return
+    if flags.FLAGS['debug'].value:
+      self._SetUpLogging()
 
-  try:
-    client = grr_shell_client.GRRShellClient(_GRR_SERVER.value,
-                                             _GRR_USERNAME.value,
-                                             _GRR_PASSWORD.value,
-                                             _CLIENT.value,
-                                             max_size)
+    if not self._ConfigureClient():
+      return
 
-  except (errors.ClientNotFoundError) as error:
-    logger.error('Error accessing grr client', exc_info=True)
-    print(str(error))
-    return
+    self._RunCommand(command)
 
-  if not client.CheckAccess():
-    print('No client access - Requesting....')
-    client.RequestAccess()
+  def _ParseArgs(self, argv: Sequence[str]) -> bool | str:
+    """Minor arg parsing and validation.
 
-  try:
-    if argv[0] == 'collect':
-      if not _REMOTE_PATH.value:
-        print(_USAGE)
-        return
-      client.CollectFiles(_REMOTE_PATH.value, _LOCAL_PATH.value)
-    elif argv[0] == 'shell':
-      client.StartBackgroundMonitors()
-      shell = grr_shell_repl.GRRShellREPL(
-          client, not _NO_INITIAL_TIMELINE.value, _INITIAL_TIMELINE.value)
-      shell.RunShell()
-    elif argv[0] in ('artifact', 'artefact'):
-      if not _ARTEFACT.value:
-        print(_USAGE)
-        return
-      client.ScheduleAndDownloadArtefact(
-          _ARTEFACT.value, _LOCAL_PATH.value)
-    elif argv[0] == 'complete':
-      if not _FLOW.value:
-        print(_USAGE)
-        return
-      client.CompleteFlow(_FLOW.value, _LOCAL_PATH.value)
-    else:
-      print(f'Unrecognised command\n{_USAGE}')
-  except Exception as error:
-    logger.error('Unknown error encountered', exc_info=True)
-    raise error
+    Args:
+      argv: Args from command line
 
+    Returns:
+      False if the command line params are invalid. If the command line is valid
+      then the command is returned.
+    """
+    argv = argv[1:]  # Remove the binary path from argv, we don't need it
 
-def _SetUpLogging() -> None:
-  """Sets up logging if requested."""
-  filename = os.path.join(
-      tempfile.gettempdir(),
-      f'grrshell_{datetime.datetime.now().strftime("%Y%m%dT%H%M%S")}.log')
+    command = argv[0] if argv else 'shell'
+    if command not in _COMMANDS:
+      print(f'Unrecognised command\n{_USAGE()}')
+      return False
 
-  logger.setLevel(logging.DEBUG)
-  logger.propagate = False
-  fh = logging.logging.FileHandler(filename)
+    try:
+      self._max_size = int(flags.FLAGS['max-file-size'].value)
+    except ValueError as error:
+      print(f'Could not set max-file-size to {flags.FLAGS["max-file-size"].value}: {str(error)}\nContinuing with default value.')
+      self._max_size = 0
 
-  fh.setFormatter(logging.logging.Formatter(
-      fmt=('%(asctime)s.%(msecs)03d - %(threadName)s - %(module)s.%(funcName)s'
-           ':%(lineno)d - %(message)s'),
-      datefmt='%Y-%m-%dT%H:%M:%S'))
-  logger.addHandler(fh)
+    if command == 'help':
+      print(_USAGE())
+      return False
 
-  print(f'Logging to {filename}')
+    for flag in (flags.FLAGS['grr-server'], flags.FLAGS['username'], flags.FLAGS['password'], flags.FLAGS['client']):
+      if not flag.value:
+        print(f'--{flag.name} is required.')
+        return False
 
-  logger.debug('Args: %s', ' '.join(sys.argv))
-  logger.debug('artefact flag: %s', _ARTEFACT.value)
-  logger.debug('client flag: %s', _CLIENT.value)
-  logger.debug('initial-timeline flag: %s', _INITIAL_TIMELINE.value)
-  logger.debug('no-initial-timeline flag: %s', _NO_INITIAL_TIMELINE.value)
-  logger.debug('local-path flag: %s', _LOCAL_PATH.value)
-  logger.debug('max-file-size flag: %s', _MAX_FILE_SIZE.value)
-  logger.debug('remote-path flag: %s', _REMOTE_PATH.value)
-  logger.debug('debug flag: %s', _DEBUG.value)
+    if (flags.FLAGS['no-initial-timeline'].value and
+        flags.FLAGS['initial-timeline'].value):
+      print(f'--{flags.FLAGS["no-initial-timeline"].name} and '
+            f'--{flags.FLAGS["initial-timeline"].name} are mutually exclusive.')
+      return False
 
+    return command
 
-def Main():  # pylint: disable=missing-function-docstring
-  app.run(main)
+  def _SetUpLogging(self) -> None:
+    """Sets up logging if requested."""
+    filename = os.path.join(
+        tempfile.gettempdir(),
+        f'grrshell_{datetime.datetime.now().strftime("%Y%m%dT%H%M%S")}.log')
+
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    fh = logging.logging.FileHandler(filename)
+
+    fh.setFormatter(logging.logging.Formatter(
+        fmt=(
+            '%(asctime)s.%(msecs)03d - %(threadName)s - %(module)s.%(funcName)s'
+            ':%(lineno)d - %(message)s'),
+        datefmt='%Y-%m-%dT%H:%M:%S'))
+    logger.addHandler(fh)
+
+    print(f'Logging to {filename}')
+
+    logger.debug('Args: %s', ' '.join(sys.argv))
+    logger.debug('artefact flag: %s', flags.FLAGS['artefact'].value)
+    logger.debug('client flag: %s', flags.FLAGS['client'].value)
+    logger.debug('initial-timeline flag: %s',
+                 flags.FLAGS['initial-timeline'].value)
+    logger.debug('no-initial-timeline flag: %s',
+                 flags.FLAGS['no-initial-timeline'].value)
+    logger.debug('local-path flag: %s', flags.FLAGS['local-path'].value)
+    logger.debug('max-file-size flag: %s', flags.FLAGS['max-file-size'].value)
+    logger.debug('remote-path flag: %s', flags.FLAGS['remote-path'].value)
+    logger.debug('debug flag: %s', flags.FLAGS['debug'].value)
+
+  def _ConfigureClient(self) -> bool:
+    """Set up the GRRShell client member.
+
+    Returns:
+      True if the client was successfully set up, false otherwise.
+    """
+    try:
+      self._client = grr_shell_client.GRRShellClient(
+          flags.FLAGS['grr-server'].value,
+          flags.FLAGS['username'].value,
+          flags.FLAGS['password'].value,
+          flags.FLAGS['client'].value,
+          self._max_size)
+
+    except (errors.ClientNotFoundError) as error:
+      logger.error('Error accessing grr client', exc_info=True)
+      print(f'Error accessing grr client{str(error)}')
+      return False
+
+    if not self._client.CheckAccess():
+      print('No client access - Requesting....')
+      if not self._client.RequestAccess():
+        print('Exiting')
+        return False
+
+    return True
+
+  def _RunCommand(self, command: str) -> None:
+    """Needs a better name.
+
+    Args:
+      command: The GRRShell command to run.
+    """
+    try:
+      if command == 'collect':
+        if not flags.FLAGS['remote-path'].value:
+          print(_USAGE())
+          return
+        self._client.CollectFiles(flags.FLAGS['remote-path'].value,
+                                  flags.FLAGS['local-path'].value)
+      elif command == 'shell':
+        self._client.StartBackgroundMonitors()
+        self._shell = self._GetGRRShellReplObject(
+            self._client,
+            not flags.FLAGS['no-initial-timeline'].value,
+            flags.FLAGS['initial-timeline'].value)
+        self._shell.RunShell()
+      elif command in ('artifact', 'artefact'):
+        if not flags.FLAGS['artefact'].value:
+          print(_USAGE())
+          return
+        self._client.ScheduleAndDownloadArtefact(
+            flags.FLAGS['artefact'].value, flags.FLAGS['local-path'].value)
+      elif command == 'complete':
+        if not flags.FLAGS['flow'].value:
+          print(_USAGE())
+          return
+        self._client.CompleteFlow(flags.FLAGS['flow'].value,
+                                  flags.FLAGS['local-path'].value)
+    except Exception as error:
+      logger.error('Unknown error encountered', exc_info=True)
+      raise error
+
+  def _GetGRRShellReplObject(
+      self,
+      shell_client: grr_shell_client.GRRShellClient,
+      collect_initial_timeline: bool,
+      initial_timeline_id: str) -> grr_shell_repl.GRRShellREPL:
+    """Returns a GRRShellREPL object. Exists to be overridden by subclasses."""
+    return grr_shell_repl.GRRShellREPL(shell_client,
+                                       collect_initial_timeline,
+                                       initial_timeline_id)
+
 
 if __name__ == '__main__':
-  app.run(main)
+  Main.DefineFlags()
+  m = Main()
+  app.run(m.main)

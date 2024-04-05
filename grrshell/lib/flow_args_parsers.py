@@ -57,6 +57,19 @@ def _GetFileArgsParse(args: Any, multiline: bool) -> list[str]:  # pylint: disab
   return [param]
 
 
+def _MultiGetFileArgsParse(args: Any, multiline: bool) -> list[str]:
+  args = flows_pb2.MultiGetFileArgs.FromString(args.value)
+  lines: list[str] = []
+  for pathspec in args.pathspecs:
+    line = pathspec.path
+    if pathspec.stream_name:
+      line = f'{line}:{pathspec.stream_name}'
+    lines.append(line)
+  if multiline or len(lines) == 1:
+    return lines
+  return ['<MULTIPLE PATHS>']
+
+
 def _CollectFilesByKnownPathArgsParse(args: Any, multiline: bool) -> list[str]:
   args = flows_pb2.CollectFilesByKnownPathArgs.FromString(args.value)
   level = flows_pb2.CollectFilesByKnownPathArgs.CollectionLevel.Name(
@@ -86,6 +99,7 @@ _FLOW_ARGS_PARSING_FUNCTIONS = {
         _CollectFilesByKnownPathArgsParse,
     'grr.FileFinderArgs': _FileFinderArgsParse,
     'grr.GetFileArgs': _GetFileArgsParse,
+    'grr.MultiGetFileArgs': _MultiGetFileArgsParse,
     'grr.InterrogateArgs': lambda x, y: [''],
     'grr.TimelineArgs': _TimelineArgsParse,
 }

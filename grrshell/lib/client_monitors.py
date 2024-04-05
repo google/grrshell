@@ -24,7 +24,7 @@ from absl import logging
 
 from grr_api_client import flow
 from grr_api_client import api as grr_api
-from grr_response_proto import flows_pb2
+from grr_response_proto.api import flow_pb2
 
 
 logger = logging.logging.getLogger('grrshell')
@@ -94,11 +94,16 @@ class FlowMonitor(_MonitorBase):
   def _Monitor(self):
     """Repeatedly polls _SingleFetch()."""
     while True:
-      with self._mutex:
-        self._SingleFetch()
+      try:
+        with self._mutex:
+          self._SingleFetch()
 
-      for flow_id in self._flows:
-        self._UpdateCachedFlow(flow_id)
+        for flow_id in self._flows:
+          self._UpdateCachedFlow(flow_id)
+      except RuntimeError as error:
+        # b/321145259 - Ignore this exception
+        if str(error) != 'dictionary changed size during iteration':
+          raise error
 
       time.sleep(self.DELAY)
 
@@ -111,29 +116,41 @@ class FlowMonitor(_MonitorBase):
 
   def GetFlowsInfoList(self, count: int = 50) -> Iterator[flow.Flow]:
     """Returns info on flows from the cache."""
-    with self._mutex:
-      values = list(self._flows.values())
-      values = sorted(values,
-                      key=lambda x: x.data.started_at, reverse=True)
-      for f in itertools.islice(values, 0, count):
-        yield f
+    values = list(self._flows.values())
+    values = sorted(values,
+                    key=lambda x: x.data.started_at, reverse=True)
+    for f in itertools.islice(values, 0, count):
+      yield f
 
   def GetFlow(self, flow_id: str) -> flow.Flow:
     """Returns cached info on a single flow."""
     self._UpdateCachedFlow(flow_id)
-    with self._mutex:
-      return self._flows[flow_id]
+    return self._flows[flow_id]
 
   def TrackFlow(self, flow_handle: flow.Flow) -> None:
     """Adds a launched flow to monitoring."""
     with self._mutex:
       self._flows[flow_handle.flow_id] = flow_handle
 
+  def IsFlowCached(self, flow_id: str) -> bool:
+    """Checks if flow information is currently cached.
+
+    Args:
+      flow_id: The ID of the flow to check.
+
+    Returns:
+      True if flow information is currently chached in the FlowMonitor, False
+          otherwise.
+    """
+    return (
+        flow_id in self._flows and
+        bool(self._flows[flow_id].data.args.TypeName()))
+
   def _UpdateCachedFlow(self, flow_id: str) -> None:
     """Fetches and caches info for a single flow."""
     if (flow_id not in self._flows or
         not self._flows[flow_id].data.args.TypeName() or
-        self._flows[flow_id].data.state == flows_pb2.FlowContext.State.RUNNING):
+        self._flows[flow_id].data.state == flow_pb2.ApiFlow.State.RUNNING):
       with self._mutex:
         flow_handle = self._grr_client.Flow(flow_id).Get()
         self._flows[flow_id] = flow_handle

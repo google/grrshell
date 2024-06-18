@@ -52,7 +52,12 @@ class _MonitorBase(metaclass=abc.ABCMeta):
     """Repeatedly polls _SingleFetch()."""
     while True:
       with self._mutex:
-        self._SingleFetch()
+        try:
+          self._SingleFetch()
+        except Exception:  # pylint: disable=broad-exception-caught
+          logger.exception(
+              'Failed to perform SingleFetch in monitor', exc_info=True)
+
       time.sleep(self.DELAY)
 
 
@@ -104,6 +109,9 @@ class FlowMonitor(_MonitorBase):
         # b/321145259 - Ignore this exception
         if str(error) != 'dictionary changed size during iteration':
           raise error
+      except Exception:  # pylint: disable=broad-exception-caught
+        logger.exception(
+            'Failed to perform SingleFetch in monitor', exc_info=True)
 
       time.sleep(self.DELAY)
 
@@ -148,9 +156,13 @@ class FlowMonitor(_MonitorBase):
 
   def _UpdateCachedFlow(self, flow_id: str) -> None:
     """Fetches and caches info for a single flow."""
-    if (flow_id not in self._flows or
-        not self._flows[flow_id].data.args.TypeName() or
-        self._flows[flow_id].data.state == flow_pb2.ApiFlow.State.RUNNING):
-      with self._mutex:
-        flow_handle = self._grr_client.Flow(flow_id).Get()
-        self._flows[flow_id] = flow_handle
+    try:
+      if (flow_id not in self._flows or
+          not self._flows[flow_id].data.args.TypeName() or
+          self._flows[flow_id].data.state == flow_pb2.ApiFlow.State.RUNNING):
+        with self._mutex:
+          flow_handle = self._grr_client.Flow(flow_id).Get()
+          self._flows[flow_id] = flow_handle
+    except Exception:  # pylint: disable=broad-exception-caught
+      logger.exception(
+          'Failed to update cache for flow %s', flow_id, exc_info=True)

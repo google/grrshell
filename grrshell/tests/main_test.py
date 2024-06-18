@@ -59,8 +59,11 @@ class MainTest(parameterized.TestCase):
 
     mock_client.assert_called_once_with(
         grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', 0)
-    mock_repl.assert_called_once_with(
-        grr_shell_repl.GRRShellREPL, mock_client.return_value, True, '')
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      True,
+                                      '',
+                                      datetime.timedelta(seconds=43200))
     mock_repl.return_value.RunShell.assert_called_once()
 
   @flagsaver.flagsaver(**{'grr-server': 'server-address', 'username': 'grr-user', 'password': 'grr-password'})
@@ -190,8 +193,11 @@ class MainTest(parameterized.TestCase):
     mock_client.assert_called_once_with(
         grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', 0)
     mock_client.return_value.RequestAccess.assert_called_once()
-    mock_repl.assert_called_once_with(
-        grr_shell_repl.GRRShellREPL, mock_client.return_value, True, '')
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      True,
+                                      '',
+                                      datetime.timedelta(seconds=43200))
     mock_repl.return_value.RunShell.assert_called_once()
 
   @flagsaver.flagsaver(**{'grr-server': 'server-address', 'username': 'grr-user', 'password': 'grr-password'})
@@ -204,8 +210,11 @@ class MainTest(parameterized.TestCase):
 
     mock_client.assert_called_once_with(
         grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', 0)
-    mock_repl.assert_called_once_with(
-        grr_shell_repl.GRRShellREPL, mock_client.return_value, False, '')
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      False,
+                                      '',
+                                      datetime.timedelta(seconds=43200))
     mock_repl.return_value.RunShell.assert_called_once()
 
   @flagsaver.flagsaver(**{'grr-server': 'server-address', 'username': 'grr-user', 'password': 'grr-password'})
@@ -218,8 +227,11 @@ class MainTest(parameterized.TestCase):
 
     mock_client.assert_called_once_with(
         grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', 0)
-    mock_repl.assert_called_once_with(
-        grr_shell_repl.GRRShellREPL, mock_client.return_value, True, 'id')
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      True,
+                                      'id',
+                                      datetime.timedelta(seconds=43200))
     mock_repl.return_value.RunShell.assert_called_once()
 
   @parameterized.named_parameters(
@@ -238,8 +250,38 @@ class MainTest(parameterized.TestCase):
 
     mock_client.assert_called_once_with(
         grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', expected_max_size)
-    mock_repl.assert_called_once_with(
-        grr_shell_repl.GRRShellREPL, mock_client.return_value, True, '')
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      True,
+                                      '',
+                                      datetime.timedelta(seconds=43200))
+    mock_repl.return_value.RunShell.assert_called_once()
+
+  @parameterized.named_parameters(
+      ('empty', {}, grr_shell_client._TIMELINE_THRESHOLD_DEFAULT),
+      ('30s', {'timeline-threshold': '30s'}, datetime.timedelta(seconds=30)),
+      ('invalid', {'timeline-threshold': 'asdf'},
+       grr_shell_client._TIMELINE_THRESHOLD_DEFAULT),
+  )
+  @mock.patch.object(grr_shell_client.GRRShellClient, '__new__', autospec=True)
+  @mock.patch.object(grr_shell_repl.GRRShellREPL, '__new__', autospec=True)
+  def test_TimelineThreshold(self,
+                             flags,
+                             expected_threshold,
+                             mock_repl,
+                             mock_client):
+    """Tests usage of the max-file-size flag."""
+    flags['client'] = 'C.000'
+    with flagsaver.flagsaver(**flags):
+      self.main.main(['binary_path', 'shell'])
+
+    mock_client.assert_called_once_with(
+        grr_shell_client.GRRShellClient, 'server-address', 'grr-user', 'grr-password', 'C.000', 0)
+    mock_repl.assert_called_once_with(grr_shell_repl.GRRShellREPL,
+                                      mock_client.return_value,
+                                      True,
+                                      '',
+                                      expected_threshold)
     mock_repl.return_value.RunShell.assert_called_once()
 
 

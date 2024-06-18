@@ -1,0 +1,16 @@
+# proto-file: grr_response_proto/api/flow.proto
+# proto-message: ApiFlow
+urn: "aff4:/C.0000000000000001/LISTDIRECTORYFLOWID"
+name: "ListDirectory"
+args {
+  [type.googleapis.com/grr.ListDirectoryArgs] {
+    pathspec: {
+      pathtype: REGISTRY
+      path: "/HKEY_LOCAL_MACHINE/SOFTWARE/"
+    }
+  }
+}
+state: TERMINATED
+flow_id: "LISTDIRECTORYFLOWID"
+client_id: "C.0000000000000001"
+started_at: 14000000  # 14 seconds past epoch

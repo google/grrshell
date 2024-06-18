@@ -18,6 +18,7 @@ from typing import Any
 
 from grr_api_client import flow
 from grr_response_proto import flows_pb2
+from grr_response_proto import jobs_pb2
 from grr_response_proto import timeline_pb2
 
 
@@ -90,7 +91,18 @@ def _CollectBrowserHistoryArgsParse(args: Any, multiline: bool) -> list[str]:
   return [','.join(flows_pb2.Browser.Name(b) for b in args.browsers)]
 
 
+def _ListDirectoryArgsParse(args: Any, multiline: bool) -> list[str]:
+  args = flows_pb2.ListDirectoryArgs.FromString(args.value)
+  pathtype = jobs_pb2.PathSpec.PathType.Name(args.pathspec.pathtype)
+  if multiline:
+    return [
+        f'Pathtype: {pathtype}',
+        f'Path: {args.pathspec.path}']
+  return [f'{pathtype} - {args.pathspec.path}']
+
+
 _FLOW_ARGS_PARSING_FUNCTIONS = {
+    # go/keep-sorted start
     'grr.ArtifactCollectorFlowArgs':
         _ArtifactCollectorFlowArgsParse,
     'grr.CollectBrowserHistoryArgs':
@@ -99,9 +111,11 @@ _FLOW_ARGS_PARSING_FUNCTIONS = {
         _CollectFilesByKnownPathArgsParse,
     'grr.FileFinderArgs': _FileFinderArgsParse,
     'grr.GetFileArgs': _GetFileArgsParse,
-    'grr.MultiGetFileArgs': _MultiGetFileArgsParse,
     'grr.InterrogateArgs': lambda x, y: [''],
+    'grr.ListDirectoryArgs': _ListDirectoryArgsParse,
+    'grr.MultiGetFileArgs': _MultiGetFileArgsParse,
     'grr.TimelineArgs': _TimelineArgsParse,
+    # go/keep-sorted end
 }
 
 

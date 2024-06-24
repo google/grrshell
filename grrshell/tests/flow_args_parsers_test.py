@@ -140,6 +140,17 @@ _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_MULTIPLE = [
     'C:/Users/username/Downloads/Firefox Installer.exe:Zone.Identifier',
     'C:/Users/username/Downloads/Safari Installer.exe']
 
+_MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_listdirectory_registry_terminated.textproto'
+_MOCK_APIFLOW_LISTDIRECTORY_REGISTRY = flow.Flow(
+    data=text_format.Parse(open(
+        _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_PROTO_FILE, 'rb').read(),
+                           flow_pb2.ApiFlow()), context=mock.MagicMock())
+_MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_EXPECTED_SINGLE = [
+    'REGISTRY - /HKEY_LOCAL_MACHINE/SOFTWARE/']
+_MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_EXPECTED_MULTIPLE = [
+    'Pathtype: REGISTRY',
+    'Path: /HKEY_LOCAL_MACHINE/SOFTWARE/']
+
 
 class FlowArgsParsersTest(parameterized.TestCase):
   """Unit tests for GRR Flow Args parsing functions."""
@@ -193,6 +204,10 @@ class FlowArgsParsersTest(parameterized.TestCase):
        False, _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_SINGLE),
       ('multigetfiles_multiple_multiline', _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE,
        True, _MOCK_APIFLOW_MULTIGETFILE_MULTIPLE_EXPECTED_MULTIPLE),
+      ('listdirectory_reg_singleline', _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY,
+       False, _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_EXPECTED_SINGLE),
+      ('listdirectory_reg_multiline', _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY,
+       True, _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY_EXPECTED_MULTIPLE),
   )
   def test_Parse(self,
                  flow_handle: flow.Flow,

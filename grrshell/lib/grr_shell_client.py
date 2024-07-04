@@ -181,10 +181,19 @@ class GRRShellClient:
     """
     reason = input('Enter access justification: ')
     approvers = input('Enter comma separated approvers: ').split(',')
+    duration = input('Enter access duration (in days; blank for default): ')
+    try:
+      duration = int(duration) if duration else 0
+      if duration < 0:
+        raise ValueError()
+    except ValueError:
+      print(f'Invalid duration: {duration}')
+      return False
 
     approval_req = self._grr_client.CreateApproval(
         reason=reason,
-        notified_users=approvers)
+        notified_users=approvers,
+        expiration_duration_days=duration or 0)
 
     logger.debug('Approval request sent: %s', approval_req.data)
 

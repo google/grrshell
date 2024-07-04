@@ -21,7 +21,6 @@ import io
 import os
 import sys
 from unittest import mock
-import unittest
 
 from google.protobuf import text_format
 from grr_api_client import api as grr_api
@@ -457,7 +456,6 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       ('no_duration', None, 0),
       ('with_duration', '25', 25),
   )
-  @unittest.skip('Expiration duration not available in current public GRR API library version')
   def test_RequestAccessSuccess(self,
                                 duration_input: str,
                                 expected_duration: int):
@@ -489,7 +487,6 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       ('negative_duration', '-5', 'Invalid duration: -5'),
       ('non_int_duration', 'asdf', 'Invalid duration: asdf'),
   )
-  @unittest.skip('Expiration duration not available in current public GRR API library version')
   def test_RequestAccessFailure(self,
                                 duration_input: str,
                                 expected_message: str):

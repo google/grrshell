@@ -243,8 +243,7 @@ class GRRShellClient:
   def GetSupportedArtefactNames(self) -> Iterator[str]:
     """Returns the cached list of supported artefact names for the client."""
     with self._artefact_list_mutex:
-      for name in self._artefacts:
-        yield name
+      yield from self._artefacts
 
   def GetLastTimeline(self,
                       staleness_threshold: Optional[datetime.timedelta] = None

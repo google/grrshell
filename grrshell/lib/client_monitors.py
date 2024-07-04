@@ -127,8 +127,7 @@ class FlowMonitor(_MonitorBase):
     values = list(self._flows.values())
     values = sorted(values,
                     key=lambda x: x.data.started_at, reverse=True)
-    for f in itertools.islice(values, 0, count):
-      yield f
+    yield from itertools.islice(values, 0, count)
 
   def GetFlow(self, flow_id: str) -> flow.Flow:
     """Returns cached info on a single flow."""

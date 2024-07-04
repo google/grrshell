@@ -21,6 +21,7 @@ import datetime
 import os
 import sys
 import tempfile
+import typing
 
 from absl import app
 from absl import flags
@@ -173,7 +174,7 @@ class Main:
 
     self._RunCommand(command)
 
-  def _ParseArgs(self, argv: Sequence[str]) -> bool | str:
+  def _ParseArgs(self, argv: Sequence[str]) -> typing.Union[bool, str]:
     """Minor arg parsing and validation.
 
     Args:

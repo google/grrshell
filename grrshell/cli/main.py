@@ -343,7 +343,8 @@ class Main:
                                        timeline_staleness_threshold)
 
 
-if __name__ == '__main__':
+def main():
+  """Main."""
   Main.DefineFlags()
   m = Main()
   app.run(m.main)

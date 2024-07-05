@@ -21,7 +21,6 @@ import io
 import os
 import sys
 from unittest import mock
-import unittest
 
 from google.protobuf import text_format
 from grr_api_client import api as grr_api
@@ -327,6 +326,11 @@ Device ID - D:
     Size:                 8002781184 (7.5 GiB)
     Free Space:           8002740224 (7.5 GiB) - 100.0%"""
 
+_MOCK_APIFLOW_LISTDORECTORY_REGISTRY_PROTO_FILE = 'grrshell/tests/testdata/mock_apiflow_listdirectory_registry_terminated.textproto'
+_MOCK_APIFLOW_LISTDIRECTORY_REGISTRY = flow.Flow(data=text_format.Parse(
+    open(_MOCK_APIFLOW_LISTDORECTORY_REGISTRY_PROTO_FILE, 'rb').read(),
+    flow_pb2.ApiFlow()), context=mock.MagicMock())
+
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE = 'grrshell/tests/testdata/file_collect_darwin.zip'
 _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_DATA = open(
     _MOCK_ZIP_DARWIN_CLIENTFILEFINDER_FILE, 'rb').read()
@@ -452,7 +456,6 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       ('no_duration', None, 0),
       ('with_duration', '25', 25),
   )
-  @unittest.skip('Expiration duration not available in current public GRR API library version')
   def test_RequestAccessSuccess(self,
                                 duration_input: str,
                                 expected_duration: int):
@@ -484,7 +487,6 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       ('negative_duration', '-5', 'Invalid duration: -5'),
       ('non_int_duration', 'asdf', 'Invalid duration: asdf'),
   )
-  @unittest.skip('Expiration duration not available in current public GRR API library version')
   def test_RequestAccessFailure(self,
                                 duration_input: str,
                                 expected_message: str):
@@ -547,7 +549,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       # "Now" is half of the staleness threshold past the epoch. All the flows
       # returned are at 1 second past the epoch, so they are not stale.
       mock_dt.now.return_value = datetime.datetime.fromtimestamp(
-          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          grr_shell_client._TIMELINE_THRESHOLD_DEFAULT.total_seconds() / 2,
           tz=datetime.timezone.utc)
 
       result = self.client.GetLastTimeline()
@@ -564,7 +566,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       # "Now" is twice the staleness threshold past the epoch. All the flows
       # returned are at 1 second past the epoch, so they are stale.
       mock_dt.now.return_value = datetime.datetime.fromtimestamp(
-          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() * 2,
+          grr_shell_client._TIMELINE_THRESHOLD_DEFAULT.total_seconds() * 2,
           tz=datetime.timezone.utc)
 
       result = self.client.GetLastTimeline()
@@ -581,7 +583,7 @@ class GrrShellClientLinuxTest(parameterized.TestCase):
       # "Now" is half of the staleness threshold past the epoch. All the flows
       # returned are at 1 second past the epoch, so they are not stale.
       mock_dt.now.return_value = datetime.datetime.fromtimestamp(
-          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          grr_shell_client._TIMELINE_THRESHOLD_DEFAULT.total_seconds() / 2,
           tz=datetime.timezone.utc)
 
       result = self.client.GetLastTimeline()
@@ -1210,7 +1212,7 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
       # "Now" is half of the staleness threshold past the epoch. All the flows
       # returned are at 1 second past the epoch, so they are not stale.
       mock_dt.now.return_value = datetime.datetime.fromtimestamp(
-          grr_shell_client._STALE_TIMELINE_THRESHOLD.total_seconds() / 2,
+          grr_shell_client._TIMELINE_THRESHOLD_DEFAULT.total_seconds() / 2,
           tz=datetime.timezone.utc)
 
       result = self.client.GetLastTimeline()
@@ -2019,6 +2021,27 @@ class GrrShellClientWindowsTest(parameterized.TestCase):
       mock_create_flow_args.assert_called_once_with('ArtifactCollectorFlow')
       mock_wait_until_done.assert_called_once()
       self.assertEqual(result, _EXPECTED_WINDOWS_VOLUMES_RESULT)
+
+  @mock.patch.object(
+      _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY, 'WaitUntilDone')
+  @mock.patch.object(
+      _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY, 'ListResults')
+  def test_CollectRegistryKey(self,
+                              mock_list_results,
+                              mock_wait_until_done):
+    """Tests the CollectRegistryKey method."""
+    with (mock.patch.object(self.client._grr_stubby.types, 'CreateFlowArgs'
+                            ) as mock_create_flow_args,
+          mock.patch.object(self.client._grr_client, 'CreateFlow'
+                            ) as mock_create_flow):
+      mock_create_flow.return_value = _MOCK_APIFLOW_LISTDIRECTORY_REGISTRY
+      mock_list_results.return_value = [_MOCK_WINDOWS_ARTEFACT_REGVALUE]
+
+      result = self.client.CollectRegistryKey('HKLM')
+
+      mock_create_flow_args.assert_called_once_with('ListDirectory')
+      mock_wait_until_done.assert_called_once()
+      self.assertEqual(result, _EXPECTED_WINDOWS_REGVALUE_RESULT)
 
 
 class GrrShellClientDarwinTest(parameterized.TestCase):

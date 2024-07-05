@@ -89,6 +89,6 @@ items: [
         root: "C:/"
       }
     }
-    last_active_at: 1000000  # 1 second past epoch in microseconds
+    last_active_at: 3000000  # 3 second past epoch in microseconds
   }
 ]

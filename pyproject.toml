@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grrshell"
-version = "v20240405"
+version = "v20240704"
 description = ""
 authors = ["Ramo <ramoj@google.com>"]
 readme = "README.md"
@@ -12,7 +12,7 @@ grrshell = 'grrshell.cli.main:main'
 python = "^3.9"
 absl-py = "^1.4.0"
 humanize = "^4.7.0"
-grr-api-client = "^3.4.6.post7"
+grr-api-client = "^3.4.7.post5"
 prompt-toolkit = "^3.0.39"
 
 [tool.poetry.group.dev.dependencies]

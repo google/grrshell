@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unit tests for util methods."""
 
-# pylint: disable=wrong-import-order
+# pylint: disable=wrong-import-order,ungrouped-imports
 from typing import Union
 
 from absl.testing import absltest

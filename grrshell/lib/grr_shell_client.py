@@ -22,7 +22,6 @@ import re
 import shutil
 import tempfile
 import threading
-import time
 import traceback
 from typing import Iterator, Optional
 import zipfile
@@ -36,6 +35,8 @@ from grr_api_client import api as grr_api
 from grr_response_proto import artifact_pb2
 from grr_response_proto import flows_pb2
 from grr_response_proto import jobs_pb2
+from grr_response_proto import timeline_pb2
+from grr_response_proto.api import flow_pb2
 from grrshell.lib import client_monitors
 from grrshell.lib import errors
 from grrshell.lib import flow_args_parsers
@@ -44,14 +45,17 @@ from grrshell.lib import utils
 
 
 _STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=12)
-_ROOT_TIMELINE_REGEX = r'/|(?:/?)[A-Z]:[/\\]'
+_WINDOWS_ROOT_TIMELINE_REGEX = r'^(?:/?)[A-Z]:[/\\]$'
+_LINUX_ROOT_TIMELINE_REGEX = r'^/$'
+
 
 _RESUMABLE_FLOW_TYPES = frozenset((
     'ClientFileFinder',
     'ArtifactCollectorFlow',
     'GetFile',
     'CollectFilesByKnownPath',
-    'CollectBrowserHistory'
+    'CollectBrowserHistory',
+    'MultiGetFile'
 ))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
@@ -114,6 +118,7 @@ class GRRShellClient:
     self._artefacts: dict[str, grr_artifact.Artifact] = {}
     self.last_timeline_time = 0
     self._formatter = formatters.GRRShellFormatter()
+    self._pathspec_mapper = _PathSpecMapper()
 
     self._artefact_list_mutex: threading.Lock = threading.Lock()
     threading.Thread(
@@ -162,13 +167,21 @@ class GRRShellClient:
       return False
     return True
 
-  def RequestAccess(self) -> None:
-    """Creates an access request and waits for the request to be granted."""
+  def RequestAccess(self) -> bool:
+    """Requests access to the client.
+
+    Prompts the user for access parameters and then waits for approval to be
+    granted.
+
+    Returns:
+      True is access was grented, False otherwise.
+    """
     reason = input('Enter access justification: ')
     approvers = input('Enter comma separated approvers: ').split(',')
 
     approval_req = self._grr_client.CreateApproval(
-        reason=reason, notified_users=approvers)
+        reason=reason,
+        notified_users=approvers)
 
     logger.debug('Approval request sent: %s', approval_req.data)
 
@@ -180,6 +193,8 @@ class GRRShellClient:
     approval_req.WaitUntilValid()
 
     print('Approval received, proceeding.')
+
+    return True
 
   def StartBackgroundMonitors(self) -> None:
     """Starts background monitors."""
@@ -228,22 +243,26 @@ class GRRShellClient:
     """
     flows = self._grr_client.ListFlows()
     latest_timeline = None
-    latest_timestamp = (
-        time.time() - _STALE_TIMELINE_THRESHOLD.total_seconds()
-    ) * 1000000
+    latest_timestamp = (datetime.datetime.now().timestamp()
+                        - _STALE_TIMELINE_THRESHOLD.total_seconds()) * 1000000
+
     for f in flows:
       if f.data.state != flows_pb2.FlowContext.TERMINATED:
         continue
       if f.data.name != 'TimelineFlow':
         continue
-      if not re.fullmatch(
-          _ROOT_TIMELINE_REGEX, str(f.Get().args.root, 'utf-8')
-      ):
+      if f.data.last_active_at < latest_timestamp:
         continue
-      for result in f.ListResults():
-        if result.timestamp > latest_timestamp:
-          latest_timestamp = result.timestamp
-          latest_timeline = f.flow_id
+
+      root = f.Get().args.root.decode('utf-8')
+      regex = (_WINDOWS_ROOT_TIMELINE_REGEX if self.GetOS() == utils.WINDOWS
+               else _LINUX_ROOT_TIMELINE_REGEX)
+      if not re.fullmatch(regex, root):
+        continue
+
+      # If we got this far, then we have found a more recent TimelineFlow
+      latest_timestamp = f.data.last_active_at
+      latest_timeline = f.flow_id
 
     return latest_timeline
 
@@ -285,15 +304,36 @@ class GRRShellClient:
     logger.debug('Timeline flow complete, collecting and decoding')
 
     results = flow_handle.ListResults()
+    filesystem = 'UNKNOWN'
     for result in results:
+      payload: timeline_pb2.TimelineResult = result.payload  # pytype: disable=annotation-type-mismatch
+      filesystem = payload.filesystem_type
       self.last_timeline_time = result.timestamp
       break
 
     io_stream = io.BytesIO()
     body = flow_handle.GetCollectedTimelineBody()
     body.WriteToStream(io_stream)
+    timeline_bytes = io_stream.getvalue()
 
-    return io_stream.getvalue()
+    args: timeline_pb2.TimelineArgs = flow_handle.args  # pytype: disable=annotation-type-mismatch
+    timeline_root = args.root.decode('utf-8')
+
+    if self.GetOS() == utils.WINDOWS:
+      if timeline_root == '/':
+        # We're on windows, with a timeline root of '/' - We need to inspect the
+        # timeline result to get the true root: Probably 'C:' but that's not
+        # guaranteed. The timeline's first 6 bytes will tell us, eg: b'0|C:\\'
+        timeline_root = (timeline_bytes[0:6].decode('utf-8')
+                         .replace('0|', '').replace(r'\\', '/'))
+        logger.debug('Inspected timeline data to identify timeline root of %s',
+                     timeline_root)
+      if timeline_root[0] == '/':
+        timeline_root = timeline_root[1:]
+
+    self._TrackPathSpecForPath(timeline_root, filesystem)
+
+    return timeline_bytes
 
   def FileInfo(self, remote_path: str, collect_ads: bool = False) -> str:
     """Synchronously collects file info and hashes for remote files.
@@ -472,7 +512,7 @@ class GRRShellClient:
         else:
           state = 'COMPLETE'
       else:
-        state = flows_pb2.FlowContext.State.Name(bg_flow.flow.data.state)
+        state = flow_pb2.ApiFlow.State.Name(bg_flow.flow.data.state)
 
       param = flow_args_parsers.Parse(bg_flow.flow)[0]
 
@@ -522,11 +562,17 @@ class GRRShellClient:
     flows = self._flow_monitor.GetFlowsInfoList(count=count)
 
     for flow_handle in flows:
+      if self._flow_monitor.IsFlowCached(flow_handle.flow_id):
+        flow_arg = flow_args_parsers.Parse(flow_handle)[0]
+      else:
+        flow_arg = '<UNCACHED FLOW ARGS>'
+
       lines.append(
           f'\t{flow_handle.flow_id} '
           f'{utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)} '
-          f'{flow_handle.data.name} {flow_args_parsers.Parse(flow_handle)[0]} '
-          f'{flows_pb2.FlowContext.State.Name(flow_handle.data.state)}')
+          f'{flow_handle.data.name} {flow_arg} '
+          f'{flow_pb2.ApiFlow.State.Name(flow_handle.data.state)}')
+
     return '\n'.join(lines)
 
   def ReattachFlow(self,
@@ -607,7 +653,7 @@ class GRRShellClient:
         flow_handle.data.name,
         f'\tCreator     {flow_handle.data.creator}',
         ('\tState       ' +
-         flows_pb2.FlowContext.State.Name(flow_handle.data.state)),
+         flow_pb2.ApiFlow.State.Name(flow_handle.data.state)),
         ('\tStarted     ' +
          utils.UnixTSToReadable(flow_handle.data.started_at / 1000000)),
         ('\tLast Active ' +
@@ -640,6 +686,40 @@ class GRRShellClient:
       lines.append(error_message)
 
     return '\n'.join(lines)
+
+  def DescribeVolumes(self) -> str:
+    """Get information on volumes connected to the client."""
+    if self.GetOS() == utils.WINDOWS:
+      artefact = 'WMILogicalDisks'
+    elif self.GetOS() == utils.LINUX:
+      raise NotImplementedError('Linux volume information not yet supported')
+    elif self.GetOS() == utils.DARWIN:
+      raise NotImplementedError('Darwin volume information not yet supported')
+    else:
+      raise RuntimeError('Unknown OS')
+
+    ac_flow = self._CreateArtefactCollectorFlow(artefact)
+    ac_flow.WaitUntilDone()
+
+    logger.debug('Flow result: %s', ac_flow.data)
+
+    return '\n'.join(self._formatter.FormatFlowResult(ac_flow))
+
+  def _TrackPathSpecForPath(self, root: str, filesystem: str) -> None:
+    """Adds a path/pathspec to the client.
+
+    This mapping is used to determine which pathspec value should be used in
+    ClientFileFinder flows (`ntfs` for `ntfs`, `os` for all others.)
+
+    Args:
+      root: The timeline / mount point root
+      filesystem: The filesystem for the mount point
+    """
+    logger.debug('Setting root / filesystem map value: %s for %s',
+                 root, filesystem)
+    self._pathspec_mapper[root] = (
+        jobs_pb2.PathSpec.NTFS if filesystem.lower() == 'ntfs'
+        else jobs_pb2.PathSpec.OS)
 
   def _ResolveClientID(self, client_id: str) -> str:
     """Resolves a client id or hostname to a client id.
@@ -698,11 +778,9 @@ class GRRShellClient:
         self._grr_stubby.types.CreateFlowArgs('ClientFileFinder'))
 
     if self.GetOS() == utils.WINDOWS:
-      flow_args.pathtype = jobs_pb2.PathSpec.NTFS
       if remote_path.startswith('/'):
         remote_path = remote_path[1:]
-    else:
-      flow_args.pathtype = jobs_pb2.PathSpec.OS
+    flow_args.pathtype = self._pathspec_mapper[remote_path]
 
     flow_args.paths.append(remote_path)
     flow_args.action.action_type = action
@@ -722,11 +800,12 @@ class GRRShellClient:
 
   def _CreateADSCollectionFlow(self, remote_path: str) -> flow.Flow:
     """Creates a GetFile flow for a Zone.Identifier ADS of a file."""
-    flow_args = flows_pb2.GetFileArgs(
-        pathspec=jobs_pb2.PathSpec(path=remote_path,
-                                   pathtype=jobs_pb2.PathSpec.NTFS,
-                                   stream_name='Zone.Identifier'))
-    ads_flow = self._grr_client.CreateFlow(name='GetFile',
+    flow_args = flows_pb2.MultiGetFileArgs(
+        pathspecs=[jobs_pb2.PathSpec(path=remote_path,
+                                     pathtype=jobs_pb2.PathSpec.NTFS,
+                                     stream_name='Zone.Identifier')])
+
+    ads_flow = self._grr_client.CreateFlow(name='MultiGetFile',
                                            args=flow_args)
 
     logger.debug('Launched flow %s', ads_flow.flow_id)
@@ -796,7 +875,6 @@ class GRRShellClient:
       InvalidRemotePathError: If the flow found no files at the remote path.
     """
     logger.debug('Exporting results for flow: %s', ff_flow.flow_id)
-    os_base = 'ntfs' if self.GetOS() == utils.WINDOWS else 'os'
 
     if not list(ff_flow.ListResults()):
       raise errors.InvalidRemotePathError(
@@ -822,10 +900,14 @@ class GRRShellClient:
             continue
           logger.debug('Extracting %s to %s', file_info.filename, local_path)
 
+          # 4th path component varies depending on collection pathtype
+          os_base = file_info.filename.split(os.path.sep)[3]
+
           nested_file_path = file_info.filename.replace(
               os.path.join(zip_root_dir, self._grr_client.client_id, 'fs',
                            os_base) + os.path.sep, '')
           dest_file_path = os.path.join(local_path, nested_file_path)
+          dest_file_path = dest_file_path.replace(':', '_')  # Windows volumes
           os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
 
           extracted_file = zip_file.extract(file_info, local_path)
@@ -833,6 +915,8 @@ class GRRShellClient:
           shutil.move(extracted_file, dest_file_path)
 
         try:
+          logger.debug('Removing zip root directory: %s',
+                       os.path.join(local_path, zip_root_dir))
           shutil.rmtree(os.path.join(local_path, zip_root_dir))
         except FileNotFoundError:
           # Failing to remove something that doesn't exist is fine.
@@ -868,7 +952,7 @@ class GRRShellClient:
       NotResumeableFlowTypeError: If the flow is not supported for resumption.
       RuntimeError: If an artefact is unsupported.
     """
-    if flow_handle.data.name == 'GetFile':
+    if flow_handle.data.name in ('GetFile', 'MultiGetFile'):
       return True
     if flow_handle.data.name in ('CollectFilesByKnownPath',
                                  'CollectBrowserHistory'):
@@ -933,3 +1017,30 @@ class GRRShellClient:
           return s.type
 
     raise RuntimeError(f'Unsupported artefact "{artefact}"')
+
+
+class _PathSpecMapper:
+  """A helper class to manage mapping timeline roots to PathSpecs."""
+
+  def __init__(self) -> None:
+    """Initialise the object."""
+    self._path_ps_map: dict[str, jobs_pb2.PathSpec.PathType] = {}
+
+  def __getitem__(self, key: str) -> jobs_pb2.PathSpec.PathType:
+    """Override square bracket operator (fetch)."""
+    longest_match = 0
+    matching_key: str = None
+
+    for curr_key in self._path_ps_map:
+      curr_match_length = len(os.path.commonprefix([key, curr_key]))
+      if curr_match_length > longest_match:
+        longest_match = curr_match_length
+        matching_key = curr_key
+
+    if not matching_key:
+      return jobs_pb2.PathSpec.OS  # Default
+    return self._path_ps_map[matching_key]
+
+  def __setitem__(self, key: str, value: jobs_pb2.PathSpec.PathType) -> None:
+    """Override square bracket operator (assignment)."""
+    self._path_ps_map[key] = value

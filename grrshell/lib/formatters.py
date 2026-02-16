@@ -23,7 +23,22 @@ import humanize
 from grr_api_client import flow
 from grr_response_proto import flows_pb2
 from grr_response_proto import jobs_pb2
+from grr_response_proto import sysinfo_pb2
 from grrshell.lib import utils
+
+
+_WINDOWS_VOLUME_DESIRED_FIELDS_MAP = {
+    'Description': lambda x: x.string,
+    'DeviceID': lambda x: x.string,
+    'DriveType': lambda x: (
+        sysinfo_pb2.WindowsVolume.WindowsDriveTypeEnum.Name(x.integer)),
+    'FileSystem': lambda x: x.string,
+    'FreeSpace': lambda x: int(x.string),
+    'Name': lambda x: x.string,
+    'Size': lambda x: int(x.string),
+    'VolumeName': lambda x: x.string,
+    'VolumeSerialNumber': lambda x: x.string,
+}
 
 
 class GRRShellFormatter:
@@ -34,6 +49,7 @@ class GRRShellFormatter:
     self._callback_map: dict[str, Callable[[Any, flow.Flow], list[str]]] = {
         'FileFinderResult': self._FormatFileFinderInfoResult,
         'StatEntry': self._FormatStatEntry,
+        'Dict': self._FormatDict
     }
 
   def FormatFlowResult(self, flow_handle: flow.Flow) -> list[str]:
@@ -76,7 +92,8 @@ class GRRShellFormatter:
     """
     args_typename = flow_handle.data.args.TypeName()
 
-    if args_typename == 'grr.GetFileArgs':
+    if args_typename in ('grr.GetFileArgs',
+                         'grr.MultiGetFileArgs'):
       return self._FormatADSResults(payload, flow_handle)
     if payload.pathspec.pathtype == jobs_pb2.PathSpec.PathType.REGISTRY:
       return self._FormatRegistryResult(payload)
@@ -180,4 +197,66 @@ class GRRShellFormatter:
         f'({jobs_pb2.StatEntry.RegistryType.Name(payload.registry_type)})']
     for descriptor, value in payload.registry_data.ListFields():
       lines.append(f'        {descriptor.name}: {value}')
+    return lines
+
+  def _FormatDict(self,
+                  payload: jobs_pb2.Dict,
+                  flow_handle: flow.Flow) -> list[str]:
+    """Formats a Dict result type.
+
+    Currently supports the Dict returned from WMILogicalDisks artefact
+    collection only.
+
+    Args:
+      payload: The Dict payload to format.
+      flow_handle: The Flow the Dict entry originates from.
+
+    Returns:
+      A list of strings, one per line, of formatted output.
+
+    Raises:
+      RuntimeError: If the Dict type is unsupported.
+    """
+    args_typename = flow_handle.data.args.TypeName()
+    if args_typename == 'grr.ArtifactCollectorFlowArgs':
+      acf_args = flows_pb2.ArtifactCollectorFlowArgs.FromString(
+          flow_handle.data.args.value)
+      if len(acf_args.artifact_list) == 1:
+        if 'WMILogicalDisks' in acf_args.artifact_list:
+          return self._FormatWindowsVolumes(payload)
+    raise RuntimeError('Unsupported Dict type')
+
+  def _FormatWindowsVolumes(self, payload: jobs_pb2.Dict) -> list[str]:
+    """Formats the Dict response from a WMILogicalDisks artefact.
+
+    Args:
+      payload: The Dict payload to format.
+
+    Returns:
+      A list of strings, one per line, of formatted output.
+    """
+    fields: dict[str, Any] = {}
+    for dat in payload.dat:
+      if dat.k.string in _WINDOWS_VOLUME_DESIRED_FIELDS_MAP:
+        fields[dat.k.string] = (
+            _WINDOWS_VOLUME_DESIRED_FIELDS_MAP[dat.k.string](dat.v))
+
+    size_natural = humanize.naturalsize(
+        fields['Size'], binary=True, format='%.1f')
+    free_space_natural = humanize.naturalsize(
+        fields['FreeSpace'], binary=True, format='%.1f')
+    free_space_percentage = round(fields['FreeSpace'] / fields['Size'] * 100, 2)
+
+    lines: list[str] = []
+    lines.append(f'Device ID - {fields["DeviceID"]}')
+    lines.append(f'    Name:                 {fields["Name"]}')
+    lines.append(f'    Volume Name:          {fields["VolumeName"]}')
+    lines.append(f'    Volume Serial Number: {fields["VolumeSerialNumber"]}')
+    lines.append(f'    Description:          {fields["Description"]}')
+    lines.append(f'    Drive Type:           {fields["DriveType"]}')
+    lines.append(f'    File System:          {fields["FileSystem"]}')
+    lines.append(f'    Size:                 {fields["Size"]} ({size_natural})')
+    lines.append(f'    Free Space:           {fields["FreeSpace"]} '
+                 f'({free_space_natural}) - {free_space_percentage}%')
+
     return lines

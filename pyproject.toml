@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "grrshell"
-version = "v20231227"
+version = "v20240405"
 description = ""
 authors = ["Ramo <ramoj@google.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
-grrshell = 'grrshell.cli.main:Main'
+grrshell = 'grrshell.cli.main:main'
 
 [tool.poetry.dependencies]
 python = "^3.9"

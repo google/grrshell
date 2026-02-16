@@ -92,6 +92,8 @@ _LS_HELP_LONG = """\tDefault sorting is dirs first, alphabetically. Optional fla
 \t-r - Reverse sort order
 \t-t - sort by modification time"""
 _REFRESH_HELP_LONG = """\tOptionally provide a path to collect the TimelineFlow for a subdirectory."""
+_REGISTRY_HELP_LONG = """\tRequires a registry key path argument.
+\tPath completion for registry keys is not supported."""
 _RESUME_HELP_LONG = """\tRequires a Flow ID argument. (Re)attaches the flow to the current GRRShell session.
 \tClientFileFinder, ArtifactCollectorFlow, and GetFile (Zone.Identifier ADS only) are supported.
 \tResuming an asynchronous flow will download the flow results in the background.
@@ -125,6 +127,8 @@ _LS_HELP = _Help('\tList directory entries, with an optional path argument.',
 _PWD_HELP = _Help('\tPrint current directory')
 _REFRESH_HELP = _Help('\tRefresh remote emulated FS (synchronous)',
                       _REFRESH_HELP_LONG)
+_REGISTRY_HELP = _Help('\tFetch registry key values (synchronous)',
+                       _REGISTRY_HELP_LONG)
 _RESUME_HELP = _Help('\tResume an existing flow', _RESUME_HELP_LONG)
 _SET_HELP = _Help('\tSet a shell value', _SET_LONG_HELP)
 _VOLUMES_HELP = _Help('\tList volumes connected to the client',
@@ -138,7 +142,9 @@ class GRRShellREPL:
   def __init__(self,
                shell_client: grr_shell_client.GRRShellClient,
                collect_initial_timeline: bool = True,
-               initial_timeline_id: Optional[str] = None):
+               initial_timeline_id: Optional[str] = None,
+               timeline_staleness_threshold: Optional[datetime.timedelta] = None
+               ):
     """Initialises the REPL driver for GRR Shell.
 
     Args:
@@ -149,6 +155,8 @@ class GRRShellREPL:
         emulated FS. If None, a non-stale timeline is looked for, and if not
         found, a new TimelineFlow is launched and waited for. Ignored if
         collect_initial_timeline is False.
+      timeline_staleness_threshold: The threshold for an existing timeline to be
+        considered too old.
     """
     logger.debug('Initialising REPL')
 
@@ -161,7 +169,8 @@ class GRRShellREPL:
 
     if collect_initial_timeline:
       if not initial_timeline_id:
-        initial_timeline_id = self._grr_shell_client.GetLastTimeline()
+        initial_timeline_id = self._grr_shell_client.GetLastTimeline(
+            staleness_threshold=(timeline_staleness_threshold or None))
       self._RefreshTimeline(existing_timeline=initial_timeline_id)
 
   def RunShell(self) -> None:
@@ -222,6 +231,8 @@ class GRRShellREPL:
         _Command('pwd', self._Pwd, _PWD_HELP),
         _Command('quit', self._Exit, _EXIT_HELP, is_alias=True),
         _Command('refresh', self._Refresh, _REFRESH_HELP, path_param=True),
+        _Command('reg', self._Registry, _REGISTRY_HELP, is_alias=True),
+        _Command('registry', self._Registry, _REGISTRY_HELP),
         _Command('resume', self._Resume, _RESUME_HELP),
         _Command('set', self._Set, _SET_HELP),
         _Command('volumes', self._Volumes, _VOLUMES_HELP),
@@ -616,6 +627,18 @@ class GRRShellREPL:
     """Lists information for all voilumes attached to the client."""
     del params  # unused
     print(self._grr_shell_client.DescribeVolumes())
+
+  def _Registry(self, params: Sequence[str]) -> None:
+    """Fetches registry key values."""
+    if len(params) != 1:
+      print('registry requires 1 argument. Usage:')
+      print(self._commands['registry'].help)
+      return
+
+    try:
+      print(self._grr_shell_client.CollectRegistryKey(params[0]))
+    except errors.InvalidOSError as error:
+      print(str(error))
 
 
 class _GrrShellREPLPromptCompleter(prompt_toolkit.completion.Completer):

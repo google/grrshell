@@ -44,18 +44,22 @@ from grrshell.lib import formatters
 from grrshell.lib import utils
 
 
-_STALE_TIMELINE_THRESHOLD = datetime.timedelta(hours=12)
+_TIMELINE_THRESHOLD_DEFAULT = datetime.timedelta(hours=12)
+_OFFLINE_THRESHOLD = datetime.timedelta(minutes=30)
 _WINDOWS_ROOT_TIMELINE_REGEX = r'^(?:/?)[A-Z]:[/\\]$'
 _LINUX_ROOT_TIMELINE_REGEX = r'^/$'
 
 
 _RESUMABLE_FLOW_TYPES = frozenset((
-    'ClientFileFinder',
+    # go/keep-sorted start
     'ArtifactCollectorFlow',
-    'GetFile',
-    'CollectFilesByKnownPath',
+    'ClientFileFinder',
     'CollectBrowserHistory',
+    'CollectFilesByKnownPath',
+    'GetFile',
+    'ListDirectory',
     'MultiGetFile'
+    # go/keep-sorted end
 ))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
@@ -66,7 +70,6 @@ _BACKGROUND_ARTEFACT_TYPES = frozenset((
 ))
 _SYNCHRONOUS_ARTEFACT_TYPES = frozenset((
     artifact_pb2.ArtifactSource.SourceType.COMMAND,
-    artifact_pb2.ArtifactSource.SourceType.GREP,
     artifact_pb2.ArtifactSource.SourceType.GRR_CLIENT_ACTION,
     artifact_pb2.ArtifactSource.SourceType.REGISTRY_KEY,
     artifact_pb2.ArtifactSource.SourceType.REGISTRY_VALUE,
@@ -178,10 +181,19 @@ class GRRShellClient:
     """
     reason = input('Enter access justification: ')
     approvers = input('Enter comma separated approvers: ').split(',')
+    duration = input('Enter access duration (in days; blank for default): ')
+    try:
+      duration = int(duration) if duration else 0
+      if duration < 0:
+        raise ValueError()
+    except ValueError:
+      print(f'Invalid duration: {duration}')
+      return False
 
     approval_req = self._grr_client.CreateApproval(
         reason=reason,
-        notified_users=approvers)
+        notified_users=approvers,
+        expiration_duration_days=duration or 0)
 
     logger.debug('Approval request sent: %s', approval_req.data)
 
@@ -231,23 +243,32 @@ class GRRShellClient:
   def GetSupportedArtefactNames(self) -> Iterator[str]:
     """Returns the cached list of supported artefact names for the client."""
     with self._artefact_list_mutex:
-      for name in self._artefacts:
-        yield name
+      yield from self._artefacts
 
-  def GetLastTimeline(self) -> Optional[str]:
+  def GetLastTimeline(self,
+                      staleness_threshold: Optional[datetime.timedelta] = None
+                      ) -> Optional[str]:
     """Returns the Flow ID of the most recent root timeline that is not stale.
+
+    Args:
+      staleness_threshold: The threshold before a preexisting timeline is too
+        old to use.
 
     Returns:
       The Flow ID of the most recent timeline that is not older than the
         staleness threshold.
     """
+    if not staleness_threshold:
+      staleness_threshold = _TIMELINE_THRESHOLD_DEFAULT
+
     flows = self._grr_client.ListFlows()
     latest_timeline = None
     latest_timestamp = (datetime.datetime.now().timestamp()
-                        - _STALE_TIMELINE_THRESHOLD.total_seconds()) * 1000000
+                        - staleness_threshold.total_seconds()) * 1000000
 
     for f in flows:
-      if f.data.state != flows_pb2.FlowContext.TERMINATED:
+      if f.data.state not in (flows_pb2.FlowContext.TERMINATED,
+                              flows_pb2.FlowContext.RUNNING):
         continue
       if f.data.name != 'TimelineFlow':
         continue
@@ -255,9 +276,12 @@ class GRRShellClient:
         continue
 
       root = f.Get().args.root.decode('utf-8')
-      regex = (_WINDOWS_ROOT_TIMELINE_REGEX if self.GetOS() == utils.WINDOWS
-               else _LINUX_ROOT_TIMELINE_REGEX)
-      if not re.fullmatch(regex, root):
+      if not any((
+          (
+              re.fullmatch(_WINDOWS_ROOT_TIMELINE_REGEX, root)
+              and self.GetOS() == utils.WINDOWS
+          ),
+          re.fullmatch(_LINUX_ROOT_TIMELINE_REGEX, root))):
         continue
 
       # If we got this far, then we have found a more recent TimelineFlow
@@ -298,6 +322,12 @@ class GRRShellClient:
       print(msg)
       logger.debug(msg)
       logger.debug('TimelineFlow Args:\n%s', flow_args)
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    if (flow_handle.data.state == flows_pb2.FlowContext.RUNNING and
+        self._last_seen_monitor.GetLastSeen() < (now - _OFFLINE_THRESHOLD)):
+      print('Warning: Machine appears to be offline, TimelineFlow collection '
+            'may fail. Use CTRL+C to abandon.')
 
     flow_handle.WaitUntilDone()
 
@@ -705,6 +735,19 @@ class GRRShellClient:
 
     return '\n'.join(self._formatter.FormatFlowResult(ac_flow))
 
+  def CollectRegistryKey(self, key: str) -> str:
+    """Collects a registry key from the client."""
+    if self.GetOS() != utils.WINDOWS:
+      raise errors.InvalidOSError(
+          'Registry collection is obviously only supported for Windows')
+
+    ld_flow = self._CreateRegistryCollectionFlow(key)
+    ld_flow.WaitUntilDone()
+
+    logger.debug('Flow result: %s', ld_flow.data)
+
+    return '\n'.join(self._formatter.FormatFlowResult(ld_flow))
+
   def _TrackPathSpecForPath(self, root: str, filesystem: str) -> None:
     """Adds a path/pathspec to the client.
 
@@ -828,7 +871,6 @@ class GRRShellClient:
         self._grr_stubby.types.CreateFlowArgs('ArtifactCollectorFlow'))
     flow_args.artifact_list.append(artefact)
     flow_args.use_raw_filesystem_access = self.GetOS() == utils.WINDOWS
-    flow_args.apply_parsers = False
     if self._max_collect_size:
       flow_args.max_file_size = self._max_collect_size
 
@@ -839,6 +881,23 @@ class GRRShellClient:
     logger.debug('Flow args: %s', ac_flow.data)
 
     return ac_flow
+
+  def _CreateRegistryCollectionFlow(self, key: str) -> flow.Flow:
+    """Launches a ListDirectory flow for listing registry keys."""
+    logger.debug('Launching a ArtifactCollectorFlow flow')
+
+    flow_args: flows_pb2.ListDirectoryArgs = (
+        self._grr_stubby.types.CreateFlowArgs('ListDirectory'))
+    flow_args.pathspec.path = key
+    flow_args.pathspec.pathtype = jobs_pb2.PathSpec.REGISTRY
+
+    ld_flow = self._grr_client.CreateFlow(name='ListDirectory',
+                                          args=flow_args)
+
+    logger.debug('Launched flow %s', ld_flow.flow_id)
+    logger.debug('Flow args: %s', ld_flow.data)
+
+    return ld_flow
 
   def _WaitAndCompleteFlow(self,
                            ff_flow: flow.Flow,
@@ -952,7 +1011,7 @@ class GRRShellClient:
       NotResumeableFlowTypeError: If the flow is not supported for resumption.
       RuntimeError: If an artefact is unsupported.
     """
-    if flow_handle.data.name in ('GetFile', 'MultiGetFile'):
+    if flow_handle.data.name in ('GetFile', 'MultiGetFile', 'ListDirectory'):
       return True
     if flow_handle.data.name in ('CollectFilesByKnownPath',
                                  'CollectBrowserHistory'):

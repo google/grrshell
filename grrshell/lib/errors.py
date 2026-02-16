@@ -37,3 +37,7 @@ class NotResumeableFlowTypeError(Exception):
 
 class TimelineDecodingError(Exception):
   """Raised when decoding the timeline fails."""
+
+
+class InvalidOSError(Exception):
+  """Raised when the OS is not applicable for a given operation."""

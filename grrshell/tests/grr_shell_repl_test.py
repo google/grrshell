@@ -36,8 +36,8 @@ _SAMPLE_TIMELINE_WINDOWS = 'grrshell/tests/testdata/sample_timeline_windows'
 
 _COMMANDS = ['help', 'ls', 'pwd', 'cd', 'refresh', 'info', 'collect', 'find',
              'flows', 'exit', 'set', 'artefact', 'clear', 'resume', 'detail',
-             'volumes']
-_ALIASES = ['h', '?', 'hash', 'quit']
+             'volumes', 'registry']
+_ALIASES = ['h', '?', 'hash', 'quit', 'reg']
 _ARTIFACT_NAMES = ['first', 'second', 'third', 'fourth']
 
 _CLIENT_ID = 'C.0000000000000001'
@@ -534,7 +534,8 @@ class GRRShellREPLTest(parameterized.TestCase):
       ('info_flags', 'info --ads --offline', grr_shell_repl._INFO_HELP.short),
       ('info_count', 'info', grr_shell_repl._INFO_HELP.short),
       ('resume', 'resume', grr_shell_repl._RESUME_HELP.short),
-      ('detail', 'detail', grr_shell_repl._DETAIL_HELP.short)
+      ('detail', 'detail', grr_shell_repl._DETAIL_HELP.short),
+      ('registry', 'registry', grr_shell_repl._REGISTRY_HELP.short),
   )
   @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
   def test_RunShell_malformed_command(self, in_text, expected, mock_prompt):
@@ -545,6 +546,18 @@ class GRRShellREPLTest(parameterized.TestCase):
       self.shell_repl.RunShell()
 
       self.assertIn(expected, buf.getvalue())
+
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_registry(self, mock_prompt):
+    """Tests entering registry at the shell cirrectly errors."""
+    mock_prompt.side_effect = ['registry /HKLM', EOFError]
+
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+      self.shell_repl.RunShell()
+
+      self.assertIn(
+          'Registry collection is obviously only supported for Windows',
+          buf.getvalue())
 
 
 class GRRShellREPLTestWindows(parameterized.TestCase):
@@ -571,7 +584,8 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
 
     shell_client = grr_shell_client.GRRShellClient('url', 'user', 'pass', 'host.domain.com')
     shell_client.StartBackgroundMonitors()
-    self.shell = grr_shell_repl.GRRShellREPL(shell_client)
+    self.shell = grr_shell_repl.GRRShellREPL(
+        shell_client, timeline_staleness_threshold=datetime.timedelta(hours=12))
 
   @parameterized.named_parameters(
       ('no_ads', 'info C:/pagefile.sys', '/C:/pagefile.sys', False),
@@ -611,6 +625,17 @@ class GRRShellREPLTestWindows(parameterized.TestCase):
       mock_collect_timeline.assert_called_once_with('D:/', None)
       mock_clear_path.assert_called_once_with('D:/', 0)
 
+  @mock.patch.object(prompt_toolkit.PromptSession, 'prompt', autospec=True)
+  def test_RunShell_registry(self, mock_prompt):
+    """Tests entering registry at the prompt calls the correct method."""
+    mock_prompt.side_effect = ['registry HKLM', EOFError]
+
+    with mock.patch.object(
+        self.shell._grr_shell_client, 'CollectRegistryKey') as mock_reg:
+
+      self.shell.RunShell()
+      mock_reg.assert_called_once_with('HKLM')
+
 
 class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
   """Unit tests for the Grr Shell REPL autompleter for Linux."""
@@ -627,7 +652,9 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
     mock_grr_client = mock.MagicMock()
     mock_grr_client.GetOS.return_value = 'Linux'
 
-    repl = grr_shell_repl.GRRShellREPL(mock_grr_client)
+    repl = grr_shell_repl.GRRShellREPL(
+        mock_grr_client,
+        timeline_staleness_threshold=datetime.timedelta(hours=12))
     commands = [
         name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [
@@ -658,7 +685,7 @@ class GrrShellREPLPromptCompleterLinuxTest(parameterized.TestCase):
       ('collect_space_only', 'collect ', ['..', 'root/', 'odd/', 'root_file']),
       ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect',
                      'exit', 'flows', 'find', 'set', 'artefact', 'clear',
-                     'resume', 'detail', 'volumes']),
+                     'resume', 'detail', 'volumes', 'registry']),
       ('find_space_only', 'find ', []),
       ('hash_space_only', 'hash ', ['..', 'root/', 'odd/', 'root_file']),
       ('help_c', 'help c', ['cd', 'clear', 'collect'], -1),
@@ -709,7 +736,9 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
     mock_grr_client = mock.MagicMock()
     mock_grr_client.GetOS.return_value = 'Windows'
 
-    repl = grr_shell_repl.GRRShellREPL(mock_grr_client)
+    repl = grr_shell_repl.GRRShellREPL(
+        mock_grr_client,
+        timeline_staleness_threshold=datetime.timedelta(hours=12))
     commands = [
         name for name in repl._commands if not repl._commands[name].is_alias]
     commands_with_params = [
@@ -725,7 +754,7 @@ class GrrShellREPLPromptCompleterWindowsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('empty', '', ['help', 'ls', 'pwd', 'cd', 'info', 'refresh', 'collect',
                      'exit', 'flows', 'find', 'set', 'artefact', 'clear',
-                     'resume', 'detail', 'volumes']),
+                     'resume', 'detail', 'volumes', 'registry']),
       ('single_char', 'c', ['cd', 'collect', 'clear']),
       ('cd_only', 'cd', ['cd']),
       ('cd_error', 'cd /nonexist', []),

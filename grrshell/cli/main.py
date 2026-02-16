@@ -53,6 +53,8 @@ _NO_INITIAL_TIMELINE_HELP = (
     'Specify an existing timeline flow to use instead of looking for a recent '
     'flow, or launching a new timeline flow. (Optional)')
 _REMOTE_PATH_HELP = 'ClientFileFinder expression for remote files'
+_TIMELINE_THRESHOLD_HELP = (
+    'Hours before a preexisting timeline is considered too old.')
 # go/keep-sorted end
 
 
@@ -71,6 +73,7 @@ shell - Start an (emulated) interactive shell with CLIENT_ID (default if no comm
   --{flags.FLAGS['initial-timeline'].name} {_INITIAL_TIMELINE_HELP}
   --{flags.FLAGS['max-file-size'].name} {_MAX_FILE_SIZE_HELP}
   --{flags.FLAGS['no-initial-timeline'].name} {_NO_INITIAL_TIMELINE_HELP}
+  --{flags.FLAGS['timeline-threshold'].name} {_TIMELINE_THRESHOLD_HELP}
 
 collect - Collect files from the client (ClientFileFinder flow)
   --{flags.FLAGS['username'].name} {_GRR_USERNAME_HELP}
@@ -113,6 +116,7 @@ class Main:
   def __init__(self):
     """Initializes the main driver."""
     self._max_size = 0
+    self._timeline_threshold: datetime.timedelta = None
     self._client: grr_shell_client.GRRShellClient = None
     self._shell: grr_shell_repl.GRRShellREPL = None
 
@@ -140,6 +144,9 @@ class Main:
         help=_MAX_FILE_SIZE_HELP)
     flags.DEFINE_string(
         name='remote-path', default='', required=False, help=_REMOTE_PATH_HELP)
+    flags.DEFINE_string(
+        name='timeline-threshold', default='12', required=False,
+        help=_TIMELINE_THRESHOLD_HELP)
     # go/keep-sorted end
     flags.DEFINE_string(name='username', default='', required=False, help=_GRR_USERNAME_HELP)
     flags.DEFINE_string(name='password', default='', required=False, help=_GRR_PASSWORD_HELP)
@@ -155,12 +162,12 @@ class Main:
     Args:
       argv: Command line args.
     """
+    if flags.FLAGS['debug'].value:
+      self._SetUpLogging()
+
     command = self._ParseArgs(argv)
     if not command:
       return
-
-    if flags.FLAGS['debug'].value:
-      self._SetUpLogging()
 
     if not self._ConfigureClient():
       return
@@ -189,6 +196,20 @@ class Main:
     except ValueError as error:
       print(f'Could not set max-file-size to {flags.FLAGS["max-file-size"].value}: {str(error)}\nContinuing with default value.')
       self._max_size = 0
+
+    try:
+      hours = int(
+          flags.FLAGS['timeline-threshold'].value)
+    except ValueError as error:
+      print('Could not set timeline-threshold to '
+            f'{flags.FLAGS["timeline-threshold"].value}: '
+            f'{str(error)}\nContinuing with default value.')
+      hours = int(
+          flags.FLAGS['timeline-threshold'].default)
+    self._timeline_threshold = datetime.timedelta(hours=hours)
+    logger.debug('timeline-threshold %s converted to %s hours',
+                 flags.FLAGS['timeline-threshold'].value,
+                 hours)
 
     if command == 'help':
       print(_USAGE())
@@ -236,6 +257,8 @@ class Main:
     logger.debug('local-path flag: %s', flags.FLAGS['local-path'].value)
     logger.debug('max-file-size flag: %s', flags.FLAGS['max-file-size'].value)
     logger.debug('remote-path flag: %s', flags.FLAGS['remote-path'].value)
+    logger.debug('timeline-threshold flag: %s',
+                 flags.FLAGS['timeline-threshold'].value)
     logger.debug('debug flag: %s', flags.FLAGS['debug'].value)
 
   def _ConfigureClient(self) -> bool:
@@ -280,10 +303,15 @@ class Main:
                                   flags.FLAGS['local-path'].value)
       elif command == 'shell':
         self._client.StartBackgroundMonitors()
-        self._shell = self._GetGRRShellReplObject(
-            self._client,
-            not flags.FLAGS['no-initial-timeline'].value,
-            flags.FLAGS['initial-timeline'].value)
+        try:
+          self._shell = self._GetGRRShellReplObject(
+              self._client,
+              not flags.FLAGS['no-initial-timeline'].value,
+              flags.FLAGS['initial-timeline'].value,
+              self._timeline_threshold)
+        except KeyboardInterrupt:
+          print('Exiting.')
+          return
         self._shell.RunShell()
       elif command in ('artifact', 'artefact'):
         if not flags.FLAGS['artefact'].value:
@@ -305,11 +333,14 @@ class Main:
       self,
       shell_client: grr_shell_client.GRRShellClient,
       collect_initial_timeline: bool,
-      initial_timeline_id: str) -> grr_shell_repl.GRRShellREPL:
+      initial_timeline_id: str,
+      timeline_staleness_threshold: datetime.timedelta
+      ) -> grr_shell_repl.GRRShellREPL:
     """Returns a GRRShellREPL object. Exists to be overridden by subclasses."""
     return grr_shell_repl.GRRShellREPL(shell_client,
                                        collect_initial_timeline,
-                                       initial_timeline_id)
+                                       initial_timeline_id,
+                                       timeline_staleness_threshold)
 
 
 def main():

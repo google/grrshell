@@ -63,14 +63,12 @@ _RESUMABLE_FLOW_TYPES = frozenset((
 ))
 
 _BACKGROUND_ARTEFACT_TYPES = frozenset((
-    artifact_pb2.ArtifactSource.SourceType.ARTIFACT_FILES,
     artifact_pb2.ArtifactSource.SourceType.ARTIFACT_GROUP,
     artifact_pb2.ArtifactSource.SourceType.FILE,
     artifact_pb2.ArtifactSource.SourceType.PATH,
 ))
 _SYNCHRONOUS_ARTEFACT_TYPES = frozenset((
     artifact_pb2.ArtifactSource.SourceType.COMMAND,
-    artifact_pb2.ArtifactSource.SourceType.GRR_CLIENT_ACTION,
     artifact_pb2.ArtifactSource.SourceType.REGISTRY_KEY,
     artifact_pb2.ArtifactSource.SourceType.REGISTRY_VALUE,
     artifact_pb2.ArtifactSource.SourceType.WMI

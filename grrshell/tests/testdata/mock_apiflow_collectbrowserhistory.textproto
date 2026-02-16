@@ -6,7 +6,7 @@ args {
   [type.googleapis.com/grr.CollectBrowserHistoryArgs] {
     browsers: [
       FIREFOX,
-      CHROME,
+      CHROMIUM_BASED_BROWSERS,
       INTERNET_EXPLORER
     ]
   }

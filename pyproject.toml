@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grrshell"
-version = "v20240704"
+version = "v20260217"
 description = ""
 authors = ["Ramo <ramoj@google.com>"]
 readme = "README.md"
@@ -22,5 +22,5 @@ pylint = "^3.0.2"
 coverage = "^7.3.2"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core", "setuptools"]
 build-backend = "poetry.core.masonry.api"

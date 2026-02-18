@@ -4,6 +4,6 @@ artifact: {
   name: "Darwin_ArtifactFiles"
   supported_os: "Darwin"
   sources: {
-    type: ARTIFACT_FILES
+    type: ARTIFACT_GROUP
   }
 }
